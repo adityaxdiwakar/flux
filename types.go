@@ -5,6 +5,8 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// Session is the session object for the flux driver and can be created and
+// returned using flux.New()
 type Session struct {
 	TdaSession         tda.Session
 	wsConn             *websocket.Conn
@@ -12,6 +14,18 @@ type Session struct {
 	CurrentState       []byte
 	CurrentChartHash   string
 	TransactionChannel chan CachedData
+}
+
+// ChartRequestSignature is the parameter for a chart request
+type ChartRequestSignature struct {
+	// ticker for the content of a chart request
+	Ticker string
+
+	// range is the timeframe for chart data to be received, see specs.txt
+	Range string
+
+	// width is the width of the candles to be received, see specs.txt
+	Width string
 }
 
 type protocolPacketData struct {
@@ -24,12 +38,6 @@ type protocolResponse struct {
 	Session string `json:"session"`
 	Build   string `json:"build"`
 	Ver     string `json:"ver"`
-}
-
-type ChartRequestSignature struct {
-	Ticker string
-	Range  string
-	Width  string
 }
 
 type gatewayConfigResponse struct {
@@ -61,7 +69,7 @@ type gatewayRequestLoad struct {
 	Payload []gatewayRequest `json:"payload"`
 }
 
-type KeyCachedData struct {
+type keyCachedData struct {
 	Data CachedData `json:"data"`
 }
 
@@ -122,6 +130,6 @@ type updateChartObject struct {
 	Value int    `json:"value"`
 }
 
-type Heartbeat struct {
+type heartbeat struct {
 	Heartbeat int64 `json:"heartbeat"`
 }

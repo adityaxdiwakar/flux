@@ -18,7 +18,7 @@ func (p *protocolResponse) IsEmpty() bool {
 }
 
 func (s *Session) dataAsChartObject() (*CachedData, error) {
-	data := KeyCachedData{}
+	data := keyCachedData{}
 	err := json.Unmarshal(s.CurrentState, &data)
 	if err != nil {
 		return nil, err

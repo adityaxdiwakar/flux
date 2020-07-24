@@ -3,7 +3,6 @@ package flux
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"log"
 	"strings"
 	"time"
@@ -59,6 +58,10 @@ func (s *Session) chartHandler(msg []byte, gab *gabs.Container) {
 	}
 }
 
+// RequestChart takes a ChartRequestSignature as an input and responds with a
+// CachedData object, it utilizes the cached if it can (with updated diffs), or
+// else it makes a new request and waits for it - if a ticker does not load in
+// time, ErrNotReceviedInTime is sent as an error
 func (s *Session) RequestChart(specs ChartRequestSignature) (*CachedData, error) {
 	// prepare request for gateway transaction
 
@@ -110,8 +113,7 @@ func (s *Session) RequestChart(specs ChartRequestSignature) (*CachedData, error)
 		return &recvPayload, nil
 
 	case <-ctx.Done():
-		return nil, errors.New("error: took too long to respond, try again")
-
+		return nil, ErrNotReceivedInTime
 	}
 
 	//unreachable code

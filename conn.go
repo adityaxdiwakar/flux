@@ -11,6 +11,8 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// New takes the input of a tda.Session (see github.com/adityaxdiwakar/tda-go)
+// and returns a flux Session which is used for all essentially library uses
 func New(creds tda.Session) (*Session, error) {
 	s := &Session{
 		TdaSession: creds,
@@ -25,6 +27,8 @@ func New(creds tda.Session) (*Session, error) {
 	return s, nil
 }
 
+// Open is a method that opens the websocket connection with the TDAmeritrade
+// server and returns an error if it is present
 func (s *Session) Open() error {
 	var err error
 
@@ -39,6 +43,7 @@ func (s *Session) Open() error {
 		return err
 	}
 
+	// dial up the websocket dialer
 	s.wsConn, _, err = websocket.DefaultDialer.Dial(gateway, http.Header{})
 	if err != nil {
 		s.wsConn = nil
@@ -56,6 +61,7 @@ func (s *Session) Open() error {
 		}
 	}()
 
+	// initial message to be sent to receive a protocol message from the server
 	establishProtocolPacket := protocolPacketData{
 		Ver:       "25.*.*",
 		Fmt:       "json-patches",
@@ -67,6 +73,8 @@ func (s *Session) Open() error {
 		return ErrProtocolUnestablished
 	}
 
+	// read the response from the server and parse it as a protocol response,
+	// error if all fields are empty
 	var establishedProtocolResponse protocolResponse
 	err = s.wsConn.ReadJSON(&establishedProtocolResponse)
 	if err != nil {
@@ -77,6 +85,8 @@ func (s *Session) Open() error {
 		return ErrProtocolUnestablished
 	}
 
+	// use github.com/adityaxdiwkar/tda-go to retrieve access token using
+	// session credentials
 	accessToken, err := s.TdaSession.GetAccessToken()
 	if err != nil {
 		return err
@@ -102,11 +112,13 @@ func (s *Session) Open() error {
 		return ErrAuthenticationUnsuccessful
 	}
 
+	// launch goroutine to handle and listen the stream
 	go s.listen()
 
 	return nil
 }
 
+// Close sends a websocket.CloseMessage to the server and waits for closure
 func (s *Session) Close() error {
 	if s.wsConn != nil {
 		err := s.wsConn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(1000, ""))
