@@ -7,6 +7,7 @@ Flux is a highly performant and error-redundant wrapper for the TDAmeritrade Pro
 ![Go Version](https://img.shields.io/github/go-mod/go-version/adityaxdiwakar/flux?style=flat-square)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 ![Code Size](https://img.shields.io/github/languages/code-size/adityaxdiwakar/flux?style=flat-square)
+[![Go Report Card](https://goreportcard.com/badge/github.com/adityaxdiwakar/flux?style=flat-square)](https://goreportcard.com/report/github.com/adityaxdiwakar/flux)
 
 ## Usage
 Flux works in unison with my TDAmeritrade API Wrapper [tda-go](https://github.com/adityaxdiwakar/tda-go) for the authentication and access token functions. This is why this is also required to be imported (and potentially added to your ``go.mod`` file).
