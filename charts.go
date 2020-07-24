@@ -65,9 +65,9 @@ func (s *Session) chartHandler(msg []byte, gab *gabs.Container) {
 // else it makes a new request and waits for it - if a ticker does not load in
 // time, ErrNotReceviedInTime is sent as an error
 func (s *Session) RequestChart(specs ChartRequestSignature) (*cachedData, error) {
-	// prepare request for gateway transaction
 
-	s.TransactionChannel = make(chan cachedData)
+	// force capitalization of tickers, since the socket is case sensitive
+	specs.Ticker = strings.ToUpper(specs.Ticker)
 
 	if s.CurrentChartHash == specs.shortName() {
 		d, err := s.dataAsChartObject()
@@ -92,7 +92,7 @@ func (s *Session) RequestChart(specs ChartRequestSignature) (*cachedData, error)
 	s.wsConn.WriteJSON(payload)
 
 	internalChannel := make(chan cachedData)
-	ctx, _ := context.WithTimeout(context.Background(), 750*time.Millisecond)
+	ctx, _ := context.WithTimeout(context.Background(), time.Second)
 
 	go func() {
 		for {
