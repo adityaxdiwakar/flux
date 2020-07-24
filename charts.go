@@ -14,6 +14,8 @@ import (
 func (s *Session) chartHandler(msg []byte, gab *gabs.Container) {
 	for _, patch := range gab.S("payloadPatches", "0", "patches").Children() {
 
+		// TODO: implement actual error handling, currently using log.Fatal()
+		// which is bad
 		var err error
 		bytesJson, err := patch.MarshalJSON()
 		if err != nil {
@@ -23,7 +25,7 @@ func (s *Session) chartHandler(msg []byte, gab *gabs.Container) {
 		var modifiedChart []byte
 
 		if patch.S("path").String() == "/error" {
-			return
+			continue
 		}
 
 		if patch.S("path").String() == `""` {
@@ -59,13 +61,13 @@ func (s *Session) chartHandler(msg []byte, gab *gabs.Container) {
 }
 
 // RequestChart takes a ChartRequestSignature as an input and responds with a
-// CachedData object, it utilizes the cached if it can (with updated diffs), or
+// cachedData object, it utilizes the cached if it can (with updated diffs), or
 // else it makes a new request and waits for it - if a ticker does not load in
 // time, ErrNotReceviedInTime is sent as an error
-func (s *Session) RequestChart(specs ChartRequestSignature) (*CachedData, error) {
+func (s *Session) RequestChart(specs ChartRequestSignature) (*cachedData, error) {
 	// prepare request for gateway transaction
 
-	s.TransactionChannel = make(chan CachedData)
+	s.TransactionChannel = make(chan cachedData)
 
 	if s.CurrentChartHash == specs.shortName() {
 		d, err := s.dataAsChartObject()
@@ -89,7 +91,7 @@ func (s *Session) RequestChart(specs ChartRequestSignature) (*CachedData, error)
 	payload := gatewayRequestLoad{[]gatewayRequest{req}}
 	s.wsConn.WriteJSON(payload)
 
-	internalChannel := make(chan CachedData)
+	internalChannel := make(chan cachedData)
 	ctx, _ := context.WithTimeout(context.Background(), 750*time.Millisecond)
 
 	go func() {

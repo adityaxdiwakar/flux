@@ -1,19 +1,11 @@
 package flux
 
 import (
-	"github.com/adityaxdiwakar/tda-go"
-	"github.com/gorilla/websocket"
+	"fmt"
 )
 
-// Session is the session object for the flux driver and can be created and
-// returned using flux.New()
-type Session struct {
-	TdaSession         tda.Session
-	wsConn             *websocket.Conn
-	ConfigUrl          string
-	CurrentState       []byte
-	CurrentChartHash   string
-	TransactionChannel chan CachedData
+func (c *ChartRequestSignature) shortName() string {
+	return fmt.Sprintf("%s@%s:%s", c.Ticker, c.Range, c.Width)
 }
 
 // ChartRequestSignature is the parameter for a chart request
@@ -38,6 +30,18 @@ type protocolResponse struct {
 	Session string `json:"session"`
 	Build   string `json:"build"`
 	Ver     string `json:"ver"`
+}
+
+func (p *protocolResponse) IsEmpty() bool {
+	if p.Build == "" {
+		return true
+	} else if p.Session == "" {
+		return true
+	} else if p.Ver == "" {
+		return true
+	} else {
+		return false
+	}
 }
 
 type gatewayConfigResponse struct {
@@ -70,10 +74,10 @@ type gatewayRequestLoad struct {
 }
 
 type keyCachedData struct {
-	Data CachedData `json:"data"`
+	Data cachedData `json:"data"`
 }
 
-type CachedData struct {
+type cachedData struct {
 	Symbol     string `json:"symbol"`
 	Instrument struct {
 		Symbol                 string `json:"symbol"`
@@ -121,7 +125,7 @@ type CachedData struct {
 type newChartObject struct {
 	Op    string     `json:"op"`
 	Path  string     `json:"path"`
-	Value CachedData `json:"value"`
+	Value cachedData `json:"value"`
 }
 
 type updateChartObject struct {

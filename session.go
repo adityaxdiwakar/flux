@@ -2,22 +2,23 @@ package flux
 
 import (
 	"encoding/json"
-	"fmt"
+
+	"github.com/adityaxdiwakar/tda-go"
+	"github.com/gorilla/websocket"
 )
 
-func (p *protocolResponse) IsEmpty() bool {
-	if p.Build == "" {
-		return true
-	} else if p.Session == "" {
-		return true
-	} else if p.Ver == "" {
-		return true
-	} else {
-		return false
-	}
+// Session is the session object for the flux driver and can be created and
+// returned using flux.New()
+type Session struct {
+	TdaSession         tda.Session
+	wsConn             *websocket.Conn
+	ConfigUrl          string
+	CurrentState       []byte
+	CurrentChartHash   string
+	TransactionChannel chan cachedData
 }
 
-func (s *Session) dataAsChartObject() (*CachedData, error) {
+func (s *Session) dataAsChartObject() (*cachedData, error) {
 	data := keyCachedData{}
 	err := json.Unmarshal(s.CurrentState, &data)
 	if err != nil {
@@ -44,8 +45,4 @@ func (s *Session) Gateway() (string, error) {
 
 	json.NewDecoder(res.Body).Decode(&gatewayResponse)
 	return gatewayResponse.MobileGatewayURL.Livetrading, nil
-}
-
-func (c *ChartRequestSignature) shortName() string {
-	return fmt.Sprintf("%s@%s:%s", c.Ticker, c.Range, c.Width)
 }

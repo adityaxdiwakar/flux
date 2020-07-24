@@ -152,6 +152,11 @@ func (s *Session) listen() {
 		}
 
 		parsedJson, err := gabs.ParseJSON(message)
+		// TODO: handle this better rather than ignoring the message
+		if err != nil {
+			continue
+		}
+
 		serviceType := parsedJson.Search("payloadPatches", "0", "service")
 
 		switch serviceType.String() {
