@@ -12,7 +12,7 @@ Flux is a highly performant and error-redundant wrapper for the TDAmeritrade Pro
 Flux works in unison with my TDAmeritrade API Wrapper [tda-go](https://github.com/adityaxdiwakar/tda-go) for the authentication and access token functions. This is why this is also required to be imported (and potentially added to your ``go.mod`` file).
 
 ```go
-import "github.com/google/go-querystring/query"
+import "github.com/adityaxdiwakar/flux"
 ```
 
 This program is intended to act as a non-blocking interface to TDAmeritrade data provisioner, it is required to be instantiated and opened, but operaes within a goroutine to prevent blocking the main process. 
