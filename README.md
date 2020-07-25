@@ -1,5 +1,6 @@
 # flux
 ![Flux Logo](https://i.imgur.com/MFQBlUd.png)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fadityaxdiwakar%2Fflux.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fadityaxdiwakar%2Fflux?ref=badge_shield)
 
 Flux is a highly performant and error-redundant wrapper for the TDAmeritrade Provisioner
 
@@ -66,3 +67,7 @@ func main() {
 ```
 
 There are more examples in the [examples folder](examples/).
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fadityaxdiwakar%2Fflux.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fadityaxdiwakar%2Fflux?ref=badge_large)
