@@ -32,11 +32,11 @@ func (c *ChartRequestSignature) shortName() string {
 	return fmt.Sprintf("CHART#%s@%s:%s", c.Ticker, c.Range, c.Width)
 }
 
-type keyCachedData struct {
-	Data cachedData `json:"data"`
+type storedCache struct {
+	Data chartStoredCache `json:"data"`
 }
 
-type cachedData struct {
+type chartStoredCache struct {
 	Symbol     string `json:"symbol"`
 	Instrument struct {
 		Symbol                 string `json:"symbol"`
@@ -82,9 +82,9 @@ type cachedData struct {
 }
 
 type newChartObject struct {
-	Op    string     `json:"op"`
-	Path  string     `json:"path"`
-	Value cachedData `json:"value"`
+	Op    string           `json:"op"`
+	Path  string           `json:"path"`
+	Value chartStoredCache `json:"value"`
 }
 
 type updateChartObject struct {
@@ -147,10 +147,10 @@ func (s *Session) chartHandler(msg []byte, gab *gabs.Container) {
 }
 
 // RequestChart takes a ChartRequestSignature as an input and responds with a
-// cachedData object, it utilizes the cached if it can (with updated diffs), or
+// chartStoredCache object, it utilizes the cached if it can (with updated diffs), or
 // else it makes a new request and waits for it - if a ticker does not load in
 // time, ErrNotReceviedInTime is sent as an error
-func (s *Session) RequestChart(specs ChartRequestSignature) (*cachedData, error) {
+func (s *Session) RequestChart(specs ChartRequestSignature) (*chartStoredCache, error) {
 
 	// force capitalization of tickers, since the socket is case sensitive
 	specs.Ticker = strings.ToUpper(specs.Ticker)
@@ -178,7 +178,7 @@ func (s *Session) RequestChart(specs ChartRequestSignature) (*cachedData, error)
 	payload := gatewayRequestLoad{[]gatewayRequest{req}}
 	s.wsConn.WriteJSON(payload)
 
-	internalChannel := make(chan cachedData)
+	internalChannel := make(chan chartStoredCache)
 	ctx, _ := context.WithTimeout(context.Background(), time.Second)
 
 	go func() {
@@ -211,13 +211,13 @@ func (s *Session) RequestChart(specs ChartRequestSignature) (*cachedData, error)
 }
 
 // RequestMultipleCharts takes a slice of ChartRequestSignature as an input and responds with a
-// cachedData object, it utilizes the cached if it can (with updated diffs), or
+// chartStoredCache object, it utilizes the cached if it can (with updated diffs), or
 // else it makes a new request and waits for it - if a ticker does not load in
 // time, ErrNotReceviedInTime is sent as an error
-func (s *Session) RequestMultipleCharts(specsSlice []ChartRequestSignature) ([]*cachedData, []ChartRequestSignature) {
+func (s *Session) RequestMultipleCharts(specsSlice []ChartRequestSignature) ([]*chartStoredCache, []ChartRequestSignature) {
 
 	payload := gatewayRequestLoad{}
-	response := []*cachedData{}
+	response := []*chartStoredCache{}
 	erroredTickers := []ChartRequestSignature{}
 	uniqueSpecs := []ChartRequestSignature{}
 
@@ -252,7 +252,7 @@ func (s *Session) RequestMultipleCharts(specsSlice []ChartRequestSignature) ([]*
 
 	s.wsConn.WriteJSON(payload)
 
-	internalChannel := make(chan []*cachedData)
+	internalChannel := make(chan []*chartStoredCache)
 	ctx, _ := context.WithTimeout(context.Background(), time.Second)
 
 	go func() {

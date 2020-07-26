@@ -15,12 +15,12 @@ type Session struct {
 	ConfigUrl          string
 	CurrentState       []byte
 	CurrentChartHash   string
-	TransactionChannel chan cachedData
+	TransactionChannel chan chartStoredCache
 	RequestVers        map[string]int
 }
 
-func (s *Session) dataAsChartObject() (*cachedData, error) {
-	data := keyCachedData{}
+func (s *Session) dataAsChartObject() (*chartStoredCache, error) {
+	data := storedCache{}
 	err := json.Unmarshal(s.CurrentState, &data)
 	if err != nil {
 		return nil, err
