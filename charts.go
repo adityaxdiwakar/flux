@@ -32,10 +32,6 @@ func (c *ChartRequestSignature) shortName() string {
 	return fmt.Sprintf("CHART#%s@%s:%s", c.Ticker, c.Range, c.Width)
 }
 
-type storedCache struct {
-	Chart chartStoredCache `json:"chart"`
-}
-
 type chartStoredCache struct {
 	Symbol     string `json:"symbol"`
 	Instrument struct {
@@ -161,18 +157,18 @@ func (s *Session) RequestChart(specs ChartRequestSignature) (*chartStoredCache, 
 		return &s.CurrentState.Chart, nil
 	}
 
-	uniqueID := fmt.Sprintf("%s-%d", specs.shortName(), s.RequestVers[specs.shortName()])
+	uniqueID := fmt.Sprintf("%s-%d", specs.shortName(), s.ChartRequestVers[specs.shortName()])
 
 	req := gatewayRequest{
 		Service:           "chart",
 		ID:                uniqueID,
-		Ver:               s.RequestVers[specs.shortName()],
+		Ver:               s.ChartRequestVers[specs.shortName()],
 		Symbol:            specs.Ticker,
 		AggregationPeriod: specs.Width,
 		Studies:           []string{},
 		Range:             specs.Range,
 	}
-	s.RequestVers[specs.shortName()]++
+	s.ChartRequestVers[specs.shortName()]++
 	payload := gatewayRequestLoad{[]gatewayRequest{req}}
 	s.wsConn.WriteJSON(payload)
 
@@ -186,7 +182,7 @@ func (s *Session) RequestChart(specs ChartRequestSignature) (*chartStoredCache, 
 			case recvPayload := <-s.TransactionChannel:
 				if recvPayload.Chart.RequestID == uniqueID {
 					internalChannel <- recvPayload
-					break
+					return
 				}
 
 			case <-ctx.Done():
@@ -227,19 +223,19 @@ func (s *Session) RequestMultipleCharts(specsSlice []ChartRequestSignature) ([]*
 			response = append(response, &s.CurrentState.Chart)
 		}
 
-		spec.UniqueID = fmt.Sprintf("%s-%d", spec.shortName(), s.RequestVers[spec.shortName()])
+		spec.UniqueID = fmt.Sprintf("%s-%d", spec.shortName(), s.ChartRequestVers[spec.shortName()])
 		uniqueSpecs = append(uniqueSpecs, spec)
 
 		req := gatewayRequest{
 			Service:           "chart",
 			ID:                spec.UniqueID,
-			Ver:               s.RequestVers[spec.shortName()],
+			Ver:               s.ChartRequestVers[spec.shortName()],
 			Symbol:            spec.Ticker,
 			AggregationPeriod: spec.Width,
 			Studies:           []string{},
 			Range:             spec.Range,
 		}
-		s.RequestVers[spec.shortName()]++
+		s.ChartRequestVers[spec.shortName()]++
 
 		payload.Payload = append(payload.Payload, req)
 	}

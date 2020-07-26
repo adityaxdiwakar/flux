@@ -15,7 +15,8 @@ type Session struct {
 	ConfigUrl          string
 	CurrentState       storedCache
 	TransactionChannel chan storedCache
-	RequestVers        map[string]int
+	ChartRequestVers   map[string]int
+	SearchRequestVers  map[string]int
 }
 
 // Gateway returns the gateway URL as a string for the live trading connection

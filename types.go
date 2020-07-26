@@ -40,6 +40,8 @@ type gatewayRequest struct {
 	Ver               int      `json:"ver,omitempty"`
 	Domain            string   `json:"domain,omitempty"`
 	Platform          string   `json:"platform,omitempty"`
+	Limit             int      `json:"limit,omitempty"`
+	Pattern           string   `json:"pattern,omitempty"`
 	Token             string   `json:"token,omitempty"`
 	AccessToken       string   `json:"accessToken,omitempty"`
 	Tag               string   `json:"tag,omitempty"`

@@ -24,7 +24,8 @@ func New(creds tda.Session) (*Session, error) {
 	s.ConfigUrl = "https://trade.thinkorswim.com/v1/api/config"
 	s.CurrentState = storedCache{}
 	s.TransactionChannel = make(chan storedCache)
-	s.RequestVers = make(map[string]int)
+	s.ChartRequestVers = make(map[string]int)
+	s.SearchRequestVers = make(map[string]int)
 
 	return s, nil
 }
@@ -168,6 +169,9 @@ func (s *Session) listen() {
 
 		case `"chart"`:
 			s.chartHandler(message, parsedJson)
+
+		case `"instrument_search"`:
+			s.searchHandler(message, parsedJson)
 		}
 	}
 }
