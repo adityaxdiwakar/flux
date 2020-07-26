@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Jeffail/gabs"
+	"github.com/Jeffail/gabs/v2"
 )
 
 func (s *Session) searchHandler(msg []byte, patch *gabs.Container) {

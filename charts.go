@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Jeffail/gabs"
+	"github.com/Jeffail/gabs/v2"
 	jsonpatch "github.com/evanphx/json-patch"
 )
 
@@ -90,17 +90,14 @@ type updateChartObject struct {
 }
 
 func (s *Session) chartHandler(msg []byte, gab *gabs.Container) {
-
-	for _, patch := range gab.S("payloadPatches").Children() {
+	patches := gab.S("payloadPatches").Children()
+	for _, patch := range patches {
 		patch = patch.S("patches", "0")
 
 		// TODO: implement actual error handling, currently using log.Fatal()
 		// which is bad
 		var err error
-		bytesJson, err := patch.MarshalJSON()
-		if err != nil {
-			log.Fatal(err)
-		}
+		bytesJson := patch.Bytes()
 
 		var modifiedChart []byte
 

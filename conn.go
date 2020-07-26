@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Jeffail/gabs"
+	"github.com/Jeffail/gabs/v2"
 	"github.com/adityaxdiwakar/tda-go"
 	"github.com/gorilla/websocket"
 )
