@@ -24,9 +24,9 @@ type ChartRequestSignature struct {
 	Width string
 }
 
-// shortname presented as TICKER@RANGE:WIDTH
+// shortname presented as CHART#TICKER@RANGE:WIDTH
 func (c *ChartRequestSignature) shortName() string {
-	return fmt.Sprintf("%s@%s:%s", c.Ticker, c.Range, c.Width)
+	return fmt.Sprintf("CHART#%s@%s:%s", c.Ticker, c.Range, c.Width)
 }
 
 type keyCachedData struct {
@@ -144,6 +144,8 @@ func (s *Session) chartHandler(msg []byte, gab *gabs.Container) {
 // else it makes a new request and waits for it - if a ticker does not load in
 // time, ErrNotReceviedInTime is sent as an error
 func (s *Session) RequestChart(specs ChartRequestSignature) (*cachedData, error) {
+
+	log.Println(specs.shortName())
 
 	// force capitalization of tickers, since the socket is case sensitive
 	specs.Ticker = strings.ToUpper(specs.Ticker)
