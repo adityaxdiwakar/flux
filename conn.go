@@ -24,6 +24,7 @@ func New(creds tda.Session) (*Session, error) {
 	s.ConfigUrl = "https://trade.thinkorswim.com/v1/api/config"
 	s.CurrentState = []byte(`{"data": ""}`)
 	s.TransactionChannel = make(chan cachedData)
+	s.RequestVers = make(map[string]int)
 
 	return s, nil
 }
@@ -151,6 +152,8 @@ func (s *Session) listen() {
 		if strings.Contains(string(message), "heartbeat") {
 			continue
 		}
+
+		log.Println(string(message))
 
 		parsedJson, err := gabs.ParseJSON(message)
 		// TODO: handle this better rather than ignoring the message
