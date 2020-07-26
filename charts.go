@@ -204,10 +204,10 @@ func (s *Session) RequestChart(specs ChartRequestSignature) (*chartStoredCache, 
 	return nil, nil
 }
 
-// RequestMultipleCharts takes a slice of ChartRequestSignature as an input and responds with a
-// chartStoredCache object, it utilizes the cached if it can (with updated diffs), or
-// else it makes a new request and waits for it - if a ticker does not load in
-// time, ErrNotReceviedInTime is sent as an error
+// RequestMultipleCharts takes a slice of ChartRequestSignature as an input and
+// responds with a a slice of chart objects, it utilizes the cached if it can
+// (with updated diffs), or else it makes a new request and waits for it - if a
+// ticker does not load in time, ErrNotReceviedInTime is sent as an error
 func (s *Session) RequestMultipleCharts(specsSlice []ChartRequestSignature) ([]*chartStoredCache, []ChartRequestSignature) {
 
 	payload := gatewayRequestLoad{}

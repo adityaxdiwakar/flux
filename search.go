@@ -22,12 +22,19 @@ func (s *Session) searchHandler(msg []byte, patch *gabs.Container) {
 	s.TransactionChannel <- s.CurrentState
 }
 
+// SearchRequest Signature is the parameter for a search request
 type SearchRequestSignature struct {
-	Pattern  string
-	Limit    int
+	// pattern is the search query for the request
+	Pattern string
+
+	// limit is the number of results to pull up, typically 3-5 is normal
+	Limit int
+
+	// internal use only
 	UniqueID string
 }
 
+// shortname presented as SEARCH#PATTERN@LIMIT
 func (r *SearchRequestSignature) shortName() string {
 	return fmt.Sprintf("SEARCH#%s@%d", r.Pattern, r.Limit)
 }
@@ -67,6 +74,10 @@ type searchStoredCache struct {
 	} `json:"value"`
 }
 
+// RequestSearch takes a SearchRequestSignature as an input and responds with a
+// search query, it does not utilize a cache (although it maintains one) so the
+// query made will be up to date with the servers. If the query is not loaded
+// within a certain time, ErrNotReceivedInTime is sent as an error
 func (s *Session) RequestSearch(spec SearchRequestSignature) (*searchStoredCache, error) {
 	uniqueID := fmt.Sprintf("%s-%d", spec.shortName(), s.SearchRequestVers[spec.shortName()])
 	spec.UniqueID = uniqueID
