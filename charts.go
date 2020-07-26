@@ -33,7 +33,7 @@ func (c *ChartRequestSignature) shortName() string {
 }
 
 type storedCache struct {
-	Data chartStoredCache `json:"data"`
+	Chart chartStoredCache `json:"chart"`
 }
 
 type chartStoredCache struct {
@@ -115,12 +115,12 @@ func (s *Session) chartHandler(msg []byte, gab *gabs.Container) {
 		if patch.S("path").String() == `""` {
 			newChart := newChartObject{}
 			json.Unmarshal(bytesJson, &newChart)
-			newChart.Path = "/data"
+			newChart.Path = "/chart"
 			modifiedChart, err = json.Marshal([]newChartObject{newChart})
 		} else {
 			updatedChart := updateChartObject{}
 			json.Unmarshal(bytesJson, &updatedChart)
-			updatedChart.Path = "/data" + updatedChart.Path
+			updatedChart.Path = "/chart" + updatedChart.Path
 			modifiedChart, err = json.Marshal([]updateChartObject{updatedChart})
 		}
 
@@ -132,16 +132,18 @@ func (s *Session) chartHandler(msg []byte, gab *gabs.Container) {
 			log.Fatal(err)
 		}
 
-		s.CurrentState, err = jspatch.Apply(s.CurrentState)
+		byteState, _ := json.Marshal(s.CurrentState)
+
+		byteState, err = jspatch.Apply(byteState)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		if patch.S("path").String() == `""` {
-			d, _ := s.dataAsChartObject()
+		var newState storedCache
+		json.Unmarshal(byteState, &newState)
 
-			s.CurrentChartHash = d.RequestID
-			s.TransactionChannel <- *d
+		if patch.S("path").String() == `""` {
+			s.TransactionChannel <- newState
 		}
 	}
 }
@@ -155,12 +157,8 @@ func (s *Session) RequestChart(specs ChartRequestSignature) (*chartStoredCache, 
 	// force capitalization of tickers, since the socket is case sensitive
 	specs.Ticker = strings.ToUpper(specs.Ticker)
 
-	if s.CurrentChartHash == specs.shortName() {
-		d, err := s.dataAsChartObject()
-		if err != nil {
-			return nil, err
-		}
-		return d, nil
+	if s.CurrentState.Chart.RequestID == specs.shortName() {
+		return &s.CurrentState.Chart, nil
 	}
 
 	uniqueID := fmt.Sprintf("%s-%d", specs.shortName(), s.RequestVers[specs.shortName()])
@@ -178,7 +176,7 @@ func (s *Session) RequestChart(specs ChartRequestSignature) (*chartStoredCache, 
 	payload := gatewayRequestLoad{[]gatewayRequest{req}}
 	s.wsConn.WriteJSON(payload)
 
-	internalChannel := make(chan chartStoredCache)
+	internalChannel := make(chan storedCache)
 	ctx, _ := context.WithTimeout(context.Background(), time.Second)
 
 	go func() {
@@ -186,7 +184,7 @@ func (s *Session) RequestChart(specs ChartRequestSignature) (*chartStoredCache, 
 			select {
 
 			case recvPayload := <-s.TransactionChannel:
-				if recvPayload.RequestID == uniqueID {
+				if recvPayload.Chart.RequestID == uniqueID {
 					internalChannel <- recvPayload
 					break
 				}
@@ -200,7 +198,7 @@ func (s *Session) RequestChart(specs ChartRequestSignature) (*chartStoredCache, 
 	select {
 
 	case recvPayload := <-internalChannel:
-		return &recvPayload, nil
+		return &recvPayload.Chart, nil
 
 	case <-ctx.Done():
 		return nil, ErrNotReceivedInTime
@@ -225,12 +223,8 @@ func (s *Session) RequestMultipleCharts(specsSlice []ChartRequestSignature) ([]*
 		// force capitalization of tickers, since the socket is case sensitive
 		spec.Ticker = strings.ToUpper(spec.Ticker)
 
-		if s.CurrentChartHash == spec.shortName() {
-			d, err := s.dataAsChartObject()
-			if err != nil {
-				erroredTickers = append(erroredTickers, spec)
-			}
-			response = append(response, d)
+		if s.CurrentState.Chart.RequestID == spec.shortName() {
+			response = append(response, &s.CurrentState.Chart)
 		}
 
 		spec.UniqueID = fmt.Sprintf("%s-%d", spec.shortName(), s.RequestVers[spec.shortName()])
@@ -261,8 +255,8 @@ func (s *Session) RequestMultipleCharts(specsSlice []ChartRequestSignature) ([]*
 
 			case recvPayload := <-s.TransactionChannel:
 				for index, spec := range uniqueSpecs {
-					if recvPayload.RequestID == spec.UniqueID {
-						response = append(response, &recvPayload)
+					if recvPayload.Chart.RequestID == spec.UniqueID {
+						response = append(response, &recvPayload.Chart)
 						uniqueSpecs = append(uniqueSpecs[:index], uniqueSpecs[index+1:]...)
 						if len(uniqueSpecs) == 0 {
 							internalChannel <- response

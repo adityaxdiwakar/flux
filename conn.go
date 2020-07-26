@@ -22,8 +22,8 @@ func New(creds tda.Session) (*Session, error) {
 	}
 
 	s.ConfigUrl = "https://trade.thinkorswim.com/v1/api/config"
-	s.CurrentState = []byte(`{"data": ""}`)
-	s.TransactionChannel = make(chan chartStoredCache)
+	s.CurrentState = storedCache{}
+	s.TransactionChannel = make(chan storedCache)
 	s.RequestVers = make(map[string]int)
 
 	return s, nil

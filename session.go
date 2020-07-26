@@ -13,19 +13,9 @@ type Session struct {
 	TdaSession         tda.Session
 	wsConn             *websocket.Conn
 	ConfigUrl          string
-	CurrentState       []byte
-	CurrentChartHash   string
-	TransactionChannel chan chartStoredCache
+	CurrentState       storedCache
+	TransactionChannel chan storedCache
 	RequestVers        map[string]int
-}
-
-func (s *Session) dataAsChartObject() (*chartStoredCache, error) {
-	data := storedCache{}
-	err := json.Unmarshal(s.CurrentState, &data)
-	if err != nil {
-		return nil, err
-	}
-	return &data.Data, nil
 }
 
 // Gateway returns the gateway URL as a string for the live trading connection
