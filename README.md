@@ -35,7 +35,7 @@ import (
 func main() {
   tdaSession := tda.Session{
      Refresh: "<YOUR_REFRESH_TOKEN>,
-     ConsumerKey: "<YOUR_CONSUMER_KEY>,
+     ConsumerKey: "<YOUR_CONSUMER_KEY>",
      RootUrl: "https://api.tdameritrade.com/v1",
      
   }

@@ -32,11 +32,7 @@ func (c *ChartRequestSignature) shortName() string {
 	return fmt.Sprintf("CHART#%s@%s:%s", c.Ticker, c.Range, c.Width)
 }
 
-type keyCachedData struct {
-	Data cachedData `json:"data"`
-}
-
-type cachedData struct {
+type chartStoredCache struct {
 	Symbol     string `json:"symbol"`
 	Instrument struct {
 		Symbol                 string `json:"symbol"`
@@ -82,9 +78,9 @@ type cachedData struct {
 }
 
 type newChartObject struct {
-	Op    string     `json:"op"`
-	Path  string     `json:"path"`
-	Value cachedData `json:"value"`
+	Op    string           `json:"op"`
+	Path  string           `json:"path"`
+	Value chartStoredCache `json:"value"`
 }
 
 type updateChartObject struct {
@@ -115,12 +111,12 @@ func (s *Session) chartHandler(msg []byte, gab *gabs.Container) {
 		if patch.S("path").String() == `""` {
 			newChart := newChartObject{}
 			json.Unmarshal(bytesJson, &newChart)
-			newChart.Path = "/data"
+			newChart.Path = "/chart"
 			modifiedChart, err = json.Marshal([]newChartObject{newChart})
 		} else {
 			updatedChart := updateChartObject{}
 			json.Unmarshal(bytesJson, &updatedChart)
-			updatedChart.Path = "/data" + updatedChart.Path
+			updatedChart.Path = "/chart" + updatedChart.Path
 			modifiedChart, err = json.Marshal([]updateChartObject{updatedChart})
 		}
 
@@ -132,53 +128,51 @@ func (s *Session) chartHandler(msg []byte, gab *gabs.Container) {
 			log.Fatal(err)
 		}
 
-		s.CurrentState, err = jspatch.Apply(s.CurrentState)
+		byteState, _ := json.Marshal(s.CurrentState)
+
+		byteState, err = jspatch.Apply(byteState)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		if patch.S("path").String() == `""` {
-			d, _ := s.dataAsChartObject()
+		var newState storedCache
+		json.Unmarshal(byteState, &newState)
 
-			s.CurrentChartHash = d.RequestID
-			s.TransactionChannel <- *d
+		if patch.S("path").String() == `""` {
+			s.TransactionChannel <- newState
 		}
 	}
 }
 
 // RequestChart takes a ChartRequestSignature as an input and responds with a
-// cachedData object, it utilizes the cached if it can (with updated diffs), or
+// chartStoredCache object, it utilizes the cached if it can (with updated diffs), or
 // else it makes a new request and waits for it - if a ticker does not load in
 // time, ErrNotReceviedInTime is sent as an error
-func (s *Session) RequestChart(specs ChartRequestSignature) (*cachedData, error) {
+func (s *Session) RequestChart(specs ChartRequestSignature) (*chartStoredCache, error) {
 
 	// force capitalization of tickers, since the socket is case sensitive
 	specs.Ticker = strings.ToUpper(specs.Ticker)
 
-	if s.CurrentChartHash == specs.shortName() {
-		d, err := s.dataAsChartObject()
-		if err != nil {
-			return nil, err
-		}
-		return d, nil
+	if s.CurrentState.Chart.RequestID == specs.shortName() {
+		return &s.CurrentState.Chart, nil
 	}
 
-	uniqueID := fmt.Sprintf("%s-%d", specs.shortName(), s.RequestVers[specs.shortName()])
+	uniqueID := fmt.Sprintf("%s-%d", specs.shortName(), s.ChartRequestVers[specs.shortName()])
 
 	req := gatewayRequest{
 		Service:           "chart",
 		ID:                uniqueID,
-		Ver:               s.RequestVers[specs.shortName()],
+		Ver:               s.ChartRequestVers[specs.shortName()],
 		Symbol:            specs.Ticker,
 		AggregationPeriod: specs.Width,
 		Studies:           []string{},
 		Range:             specs.Range,
 	}
-	s.RequestVers[specs.shortName()]++
+	s.ChartRequestVers[specs.shortName()]++
 	payload := gatewayRequestLoad{[]gatewayRequest{req}}
 	s.wsConn.WriteJSON(payload)
 
-	internalChannel := make(chan cachedData)
+	internalChannel := make(chan storedCache)
 	ctx, _ := context.WithTimeout(context.Background(), time.Second)
 
 	go func() {
@@ -186,9 +180,9 @@ func (s *Session) RequestChart(specs ChartRequestSignature) (*cachedData, error)
 			select {
 
 			case recvPayload := <-s.TransactionChannel:
-				if recvPayload.RequestID == uniqueID {
+				if recvPayload.Chart.RequestID == uniqueID {
 					internalChannel <- recvPayload
-					break
+					return
 				}
 
 			case <-ctx.Done():
@@ -200,7 +194,7 @@ func (s *Session) RequestChart(specs ChartRequestSignature) (*cachedData, error)
 	select {
 
 	case recvPayload := <-internalChannel:
-		return &recvPayload, nil
+		return &recvPayload.Chart, nil
 
 	case <-ctx.Done():
 		return nil, ErrNotReceivedInTime
@@ -210,14 +204,14 @@ func (s *Session) RequestChart(specs ChartRequestSignature) (*cachedData, error)
 	return nil, nil
 }
 
-// RequestMultipleCharts takes a slice of ChartRequestSignature as an input and responds with a
-// cachedData object, it utilizes the cached if it can (with updated diffs), or
-// else it makes a new request and waits for it - if a ticker does not load in
-// time, ErrNotReceviedInTime is sent as an error
-func (s *Session) RequestMultipleCharts(specsSlice []ChartRequestSignature) ([]*cachedData, []ChartRequestSignature) {
+// RequestMultipleCharts takes a slice of ChartRequestSignature as an input and
+// responds with a a slice of chart objects, it utilizes the cached if it can
+// (with updated diffs), or else it makes a new request and waits for it - if a
+// ticker does not load in time, ErrNotReceviedInTime is sent as an error
+func (s *Session) RequestMultipleCharts(specsSlice []ChartRequestSignature) ([]*chartStoredCache, []ChartRequestSignature) {
 
 	payload := gatewayRequestLoad{}
-	response := []*cachedData{}
+	response := []*chartStoredCache{}
 	erroredTickers := []ChartRequestSignature{}
 	uniqueSpecs := []ChartRequestSignature{}
 
@@ -225,34 +219,30 @@ func (s *Session) RequestMultipleCharts(specsSlice []ChartRequestSignature) ([]*
 		// force capitalization of tickers, since the socket is case sensitive
 		spec.Ticker = strings.ToUpper(spec.Ticker)
 
-		if s.CurrentChartHash == spec.shortName() {
-			d, err := s.dataAsChartObject()
-			if err != nil {
-				erroredTickers = append(erroredTickers, spec)
-			}
-			response = append(response, d)
+		if s.CurrentState.Chart.RequestID == spec.shortName() {
+			response = append(response, &s.CurrentState.Chart)
 		}
 
-		spec.UniqueID = fmt.Sprintf("%s-%d", spec.shortName(), s.RequestVers[spec.shortName()])
+		spec.UniqueID = fmt.Sprintf("%s-%d", spec.shortName(), s.ChartRequestVers[spec.shortName()])
 		uniqueSpecs = append(uniqueSpecs, spec)
 
 		req := gatewayRequest{
 			Service:           "chart",
 			ID:                spec.UniqueID,
-			Ver:               s.RequestVers[spec.shortName()],
+			Ver:               s.ChartRequestVers[spec.shortName()],
 			Symbol:            spec.Ticker,
 			AggregationPeriod: spec.Width,
 			Studies:           []string{},
 			Range:             spec.Range,
 		}
-		s.RequestVers[spec.shortName()]++
+		s.ChartRequestVers[spec.shortName()]++
 
 		payload.Payload = append(payload.Payload, req)
 	}
 
 	s.wsConn.WriteJSON(payload)
 
-	internalChannel := make(chan []*cachedData)
+	internalChannel := make(chan []*chartStoredCache)
 	ctx, _ := context.WithTimeout(context.Background(), time.Second)
 
 	go func() {
@@ -261,8 +251,8 @@ func (s *Session) RequestMultipleCharts(specsSlice []ChartRequestSignature) ([]*
 
 			case recvPayload := <-s.TransactionChannel:
 				for index, spec := range uniqueSpecs {
-					if recvPayload.RequestID == spec.UniqueID {
-						response = append(response, &recvPayload)
+					if recvPayload.Chart.RequestID == spec.UniqueID {
+						response = append(response, &recvPayload.Chart)
 						uniqueSpecs = append(uniqueSpecs[:index], uniqueSpecs[index+1:]...)
 						if len(uniqueSpecs) == 0 {
 							internalChannel <- response
