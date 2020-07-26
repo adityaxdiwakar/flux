@@ -158,8 +158,6 @@ func (s *Session) RequestChart(specs ChartRequestSignature) (*cachedData, error)
 
 	uniqueID := fmt.Sprintf("%s-%d", specs.shortName(), s.RequestVers[specs.shortName()])
 
-	log.Println(uniqueID)
-
 	req := gatewayRequest{
 		Service:           "chart",
 		ID:                uniqueID,
