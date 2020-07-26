@@ -145,8 +145,6 @@ func (s *Session) chartHandler(msg []byte, gab *gabs.Container) {
 // time, ErrNotReceviedInTime is sent as an error
 func (s *Session) RequestChart(specs ChartRequestSignature) (*cachedData, error) {
 
-	log.Println(specs.shortName())
-
 	// force capitalization of tickers, since the socket is case sensitive
 	specs.Ticker = strings.ToUpper(specs.Ticker)
 
@@ -158,17 +156,20 @@ func (s *Session) RequestChart(specs ChartRequestSignature) (*cachedData, error)
 		return d, nil
 	}
 
-	s.CurrentChartHash = specs.shortName()
+	uniqueID := fmt.Sprintf("%s-%d", specs.shortName(), s.RequestVers[specs.shortName()])
+
+	log.Println(uniqueID)
 
 	req := gatewayRequest{
 		Service:           "chart",
-		ID:                "chart",
-		Ver:               0,
+		ID:                uniqueID,
+		Ver:               s.RequestVers[specs.shortName()],
 		Symbol:            specs.Ticker,
 		AggregationPeriod: specs.Width,
 		Studies:           []string{},
 		Range:             specs.Range,
 	}
+	s.RequestVers[specs.shortName()]++
 	payload := gatewayRequestLoad{[]gatewayRequest{req}}
 	s.wsConn.WriteJSON(payload)
 
@@ -180,8 +181,10 @@ func (s *Session) RequestChart(specs ChartRequestSignature) (*cachedData, error)
 			select {
 
 			case recvPayload := <-s.TransactionChannel:
-				if strings.ToUpper(recvPayload.Symbol) == strings.ToUpper(specs.Ticker) {
+				if recvPayload.RequestID == uniqueID {
+					s.CurrentChartHash = specs.shortName()
 					internalChannel <- recvPayload
+					break
 				}
 
 			case <-ctx.Done():

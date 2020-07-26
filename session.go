@@ -16,6 +16,7 @@ type Session struct {
 	CurrentState       []byte
 	CurrentChartHash   string
 	TransactionChannel chan cachedData
+	RequestVers        map[string]int
 }
 
 func (s *Session) dataAsChartObject() (*cachedData, error) {
