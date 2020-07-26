@@ -18,6 +18,7 @@ func (s *Session) searchHandler(msg []byte, patch *gabs.Container) {
 		return
 	}
 
+	state.Path = "/instrument_search"
 	s.CurrentState.Search = state
 	s.TransactionChannel <- s.CurrentState
 }
