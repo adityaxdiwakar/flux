@@ -90,7 +90,10 @@ type updateChartObject struct {
 }
 
 func (s *Session) chartHandler(msg []byte, gab *gabs.Container) {
-	patches := gab.S("payloadPatches").Children()
+	patches, err := gab.S("payloadPatches").Children()
+	if err != nil {
+		return
+	}
 	for _, patch := range patches {
 		patch = patch.S("patches", "0")
 
