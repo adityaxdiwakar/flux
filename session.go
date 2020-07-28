@@ -17,6 +17,8 @@ type Session struct {
 	TransactionChannel chan storedCache
 	ChartRequestVers   map[string]int
 	SearchRequestVers  map[string]int
+	MutexLock          bool
+	HandlerWorking     bool
 }
 
 // Gateway returns the gateway URL as a string for the live trading connection

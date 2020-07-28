@@ -147,6 +147,14 @@ func (s *Session) chartHandler(msg []byte, gab *gabs.Container) {
 // time, ErrNotReceviedInTime is sent as an error
 func (s *Session) RequestChart(specs ChartRequestSignature) (*chartStoredCache, error) {
 
+	for {
+		if s.MutexLock == false {
+			break
+		} else {
+			time.Sleep(50 * time.Millisecond)
+		}
+	}
+
 	// force capitalization of tickers, since the socket is case sensitive
 	specs.Ticker = strings.ToUpper(specs.Ticker)
 
@@ -206,6 +214,14 @@ func (s *Session) RequestChart(specs ChartRequestSignature) (*chartStoredCache, 
 // (with updated diffs), or else it makes a new request and waits for it - if a
 // ticker does not load in time, ErrNotReceviedInTime is sent as an error
 func (s *Session) RequestMultipleCharts(specsSlice []ChartRequestSignature) ([]*chartStoredCache, []ChartRequestSignature) {
+
+	for {
+		if s.MutexLock == false {
+			break
+		} else {
+			time.Sleep(50 * time.Millisecond)
+		}
+	}
 
 	payload := gatewayRequestLoad{}
 	response := []*chartStoredCache{}

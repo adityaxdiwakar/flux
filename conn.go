@@ -117,21 +117,33 @@ func (s *Session) Open() error {
 
 	// launch goroutine to handle and listen the stream
 	go s.listen()
+	go s.reconnectHandler()
 
 	return nil
+}
+
+func (s *Session) reconnectHandler() {
+	if s.HandlerWorking == true {
+		return
+	}
+	s.HandlerWorking = true
+	defer func() { s.HandlerWorking = false }()
+	for range time.Tick(90 * time.Minute) {
+		s.MutexLock = true
+		s.Close()
+		s.Open()
+		s.MutexLock = false
+	}
 }
 
 // Close sends a websocket.CloseMessage to the server and waits for closure
 func (s *Session) Close() error {
 	if s.wsConn != nil {
-		err := s.wsConn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(1000, ""))
-		if err != nil {
-			return err
-		}
+		s.wsConn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(1000, ""))
 
 		time.Sleep(time.Second)
 
-		err = s.wsConn.Close()
+		err := s.wsConn.Close()
 		if err != nil {
 			return err
 		}
@@ -144,6 +156,7 @@ func (s *Session) Close() error {
 
 func (s *Session) listen() {
 	for {
+
 		_, message, err := s.wsConn.ReadMessage()
 		if err != nil {
 			log.Printf("error: closing websocket listen due to %v", err)
