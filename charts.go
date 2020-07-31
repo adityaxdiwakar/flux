@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -91,52 +90,60 @@ type updateChartObject struct {
 
 func (s *Session) chartHandler(msg []byte, gab *gabs.Container) {
 	patches := gab.S("payloadPatches").Children()
-	for _, patch := range patches {
-		patch = patch.S("patches", "0")
+	for _, patchHead := range patches {
+		rID := patchHead.S("requestId")
+		patchHead := patchHead.S("patches").Children()
+		for _, patch := range patchHead {
 
-		// TODO: implement actual error handling, currently using log.Fatal()
-		// which is bad
-		var err error
-		bytesJson := patch.Bytes()
+			// TODO: implement actual error handling, currently using log.Fatal()
+			// which is bad
+			var err error
+			bytesJson := patch.Bytes()
 
-		var modifiedChart []byte
+			var modifiedChart []byte
 
-		if patch.S("path").String() == "/error" {
-			continue
-		}
+			if patch.S("path").String() == "/error" {
+				continue
+			}
 
-		if patch.S("path").String() == `""` {
-			newChart := newChartObject{}
-			json.Unmarshal(bytesJson, &newChart)
-			newChart.Path = "/chart"
-			modifiedChart, err = json.Marshal([]newChartObject{newChart})
-		} else {
-			updatedChart := updateChartObject{}
-			json.Unmarshal(bytesJson, &updatedChart)
-			updatedChart.Path = "/chart" + updatedChart.Path
-			modifiedChart, err = json.Marshal([]updateChartObject{updatedChart})
-		}
+			if patch.S("path").String() == `""` {
+				newChart := newChartObject{}
+				json.Unmarshal(bytesJson, &newChart)
+				newChart.Path = "/chart"
+				modifiedChart, err = json.Marshal([]newChartObject{newChart})
+			} else {
+				if rID.String() != fmt.Sprintf("\"%s\"", s.CurrentState.Chart.RequestID) {
+					continue
+				}
+				updatedChart := updateChartObject{}
+				json.Unmarshal(bytesJson, &updatedChart)
+				updatedChart.Path = "/chart" + updatedChart.Path
+				modifiedChart, err = json.Marshal([]updateChartObject{updatedChart})
+			}
 
-		if err != nil {
-			log.Fatal(err)
-		}
-		jspatch, err := jsonpatch.DecodePatch(modifiedChart)
-		if err != nil {
-			log.Fatal(err)
-		}
+			if err != nil {
+				return
+			}
+			jspatch, err := jsonpatch.DecodePatch(modifiedChart)
+			if err != nil {
+				return
+			}
 
-		byteState, _ := json.Marshal(s.CurrentState)
+			byteState, _ := json.Marshal(s.CurrentState)
 
-		byteState, err = jspatch.Apply(byteState)
-		if err != nil {
-			log.Fatal(err)
-		}
+			byteState, err = jspatch.Apply(byteState)
+			if err != nil {
+				return
+			}
 
-		var newState storedCache
-		json.Unmarshal(byteState, &newState)
+			var newState storedCache
+			json.Unmarshal(byteState, &newState)
 
-		if patch.S("path").String() == `""` {
-			s.TransactionChannel <- newState
+			s.CurrentState = newState
+
+			if patch.S("path").String() == `""` {
+				s.TransactionChannel <- newState
+			}
 		}
 	}
 }
