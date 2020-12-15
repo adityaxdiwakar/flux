@@ -26,6 +26,7 @@ func New(creds tda.Session) (*Session, error) {
 	s.TransactionChannel = make(chan storedCache)
 	s.ChartRequestVers = make(map[string]int)
 	s.SearchRequestVers = make(map[string]int)
+	s.OptionSeriesRequestVers = make(map[string]int)
 
 	return s, nil
 }
@@ -185,6 +186,10 @@ func (s *Session) listen() {
 
 		case `"instrument_search"`:
 			s.searchHandler(message, parsedJson)
+
+		case `"optionSeries"`:
+			s.optionSeriesHandler(message, parsedJson)
+
 		}
 	}
 }

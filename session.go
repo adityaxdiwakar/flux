@@ -10,15 +10,16 @@ import (
 // Session is the session object for the flux driver and can be created and
 // returned using flux.New()
 type Session struct {
-	TdaSession         tda.Session
-	wsConn             *websocket.Conn
-	ConfigUrl          string
-	CurrentState       storedCache
-	TransactionChannel chan storedCache
-	ChartRequestVers   map[string]int
-	SearchRequestVers  map[string]int
-	MutexLock          bool
-	HandlerWorking     bool
+	TdaSession              tda.Session
+	wsConn                  *websocket.Conn
+	ConfigUrl               string
+	CurrentState            storedCache
+	TransactionChannel      chan storedCache
+	ChartRequestVers        map[string]int
+	SearchRequestVers       map[string]int
+	OptionSeriesRequestVers map[string]int
+	MutexLock               bool
+	HandlerWorking          bool
 }
 
 // Gateway returns the gateway URL as a string for the live trading connection
