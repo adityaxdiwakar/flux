@@ -27,6 +27,7 @@ func New(creds tda.Session) (*Session, error) {
 	s.ChartRequestVers = make(map[string]int)
 	s.SearchRequestVers = make(map[string]int)
 	s.OptionSeriesRequestVers = make(map[string]int)
+	s.OptionChainGetRequestVers = make(map[string]int)
 
 	return s, nil
 }
@@ -189,6 +190,9 @@ func (s *Session) listen() {
 
 		case `"optionSeries"`:
 			s.optionSeriesHandler(message, parsedJson)
+
+		case `"option_chain/get"`:
+			s.optionChainGetHandler(message, parsedJson)
 
 		}
 	}

@@ -35,21 +35,23 @@ type gatewayConfigResponse struct {
 }
 
 type gatewayRequest struct {
-	Service           string   `json:"service,omitempty"`
-	ID                string   `json:"id,omitempty"`
-	Ver               int      `json:"ver,omitempty"`
-	Domain            string   `json:"domain,omitempty"`
-	Platform          string   `json:"platform,omitempty"`
-	Limit             int      `json:"limit,omitempty"`
-	Pattern           string   `json:"pattern,omitempty"`
-	Underlying        string   `json:"underlying,omitempty"`
-	Token             string   `json:"token,omitempty"`
-	AccessToken       string   `json:"accessToken,omitempty"`
-	Tag               string   `json:"tag,omitempty"`
-	Symbol            string   `json:"symbol,omitempty"`
-	AggregationPeriod string   `json:"aggregationPeriod,omitempty"`
-	Studies           []string `json:"studies,omitempty"`
-	Range             string   `json:"range,omitempty"`
+	Ver               int                   `json:"ver,omitempty"`
+	Limit             int                   `json:"limit,omitempty"`
+	Service           string                `json:"service,omitempty"`
+	ID                string                `json:"id,omitempty"`
+	Domain            string                `json:"domain,omitempty"`
+	Platform          string                `json:"platform,omitempty"`
+	Pattern           string                `json:"pattern,omitempty"`
+	Underlying        string                `json:"underlying,omitempty"`
+	UnderlyingSymbol  string                `json:"underlyingSymbol,omitempty"`
+	Token             string                `json:"token,omitempty"`
+	AccessToken       string                `json:"accessToken,omitempty"`
+	Tag               string                `json:"tag,omitempty"`
+	Symbol            string                `json:"symbol,omitempty"`
+	AggregationPeriod string                `json:"aggregationPeriod,omitempty"`
+	Range             string                `json:"range,omitempty"`
+	Studies           []string              `json:"studies,omitempty"`
+	Filter            *OptionChainGetFilter `json:"filter,omitempty"`
 }
 
 type gatewayRequestLoad struct {
