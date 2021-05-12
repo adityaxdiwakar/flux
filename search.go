@@ -92,20 +92,28 @@ func (s *Session) RequestSearch(spec SearchRequestSignature) (*searchStoredCache
 	uniqueID := fmt.Sprintf("%s-%d", spec.shortName(), s.SearchRequestVers[spec.shortName()])
 	spec.UniqueID = uniqueID
 
-	req := gatewayRequest{
-		Service: "instrument_search",
-		Limit:   5,
-		Pattern: spec.Pattern,
-		Ver:     s.SearchRequestVers[spec.shortName()],
-		ID:      spec.UniqueID,
+	payload := gatewayRequestLoad{
+		Payload: []gatewayRequest{
+			{
+				Header: gatewayHeader{
+					Service: "instrument_search",
+					Ver:     s.SearchRequestVers[spec.shortName()],
+					ID:      spec.UniqueID,
+				},
+				Params: gatewayParams{
+					Limit:   5,
+					Pattern: spec.Pattern,
+				},
+			},
+		},
 	}
-	s.SearchRequestVers[spec.shortName()]++
 
-	payload := gatewayRequestLoad{[]gatewayRequest{req}}
+	s.SearchRequestVers[spec.shortName()]++
 	s.wsConn.WriteJSON(payload)
 
 	internalChannel := make(chan storedCache)
-	ctx, _ := context.WithTimeout(context.Background(), time.Second)
+	ctx, ctxCancel := context.WithTimeout(context.Background(), time.Second)
+	defer ctxCancel()
 
 	go func() {
 		for {

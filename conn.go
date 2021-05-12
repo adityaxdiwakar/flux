@@ -26,6 +26,8 @@ func New(creds tda.Session) (*Session, error) {
 	s.TransactionChannel = make(chan storedCache)
 	s.ChartRequestVers = make(map[string]int)
 	s.SearchRequestVers = make(map[string]int)
+	s.OptionSeriesRequestVers = make(map[string]int)
+	s.OptionChainGetRequestVers = make(map[string]int)
 
 	return s, nil
 }
@@ -66,8 +68,8 @@ func (s *Session) Open() error {
 
 	// initial message to be sent to receive a protocol message from the server
 	establishProtocolPacket := protocolPacketData{
-		Ver:       "25.*.*",
-		Fmt:       "json-patches",
+		Ver:       "26.*.*",
+		Fmt:       "json-patches-structured",
 		Heartbeat: "5s",
 	}
 
@@ -95,18 +97,22 @@ func (s *Session) Open() error {
 		return err
 	}
 
-	auth := gatewayRequest{
-		Service:     "login",
-		ID:          "login",
-		Ver:         0,
-		Domain:      "TOS",
-		Platform:    "PROD",
-		AccessToken: accessToken,
-		Tag:         "TOSWeb",
-	}
-
 	request := gatewayRequestLoad{
-		[]gatewayRequest{auth},
+		Payload: []gatewayRequest{
+			{
+				Header: gatewayHeader{
+					Service: "login",
+					ID:      "login",
+					Ver:     0,
+				},
+				Params: gatewayParams{
+					Domain:      "TOS",
+					Platform:    "PROD",
+					AccessToken: accessToken,
+					Tag:         "TOSWeb",
+				},
+			},
+		},
 	}
 
 	// push the authentication into the stream
@@ -173,18 +179,29 @@ func (s *Session) listen() {
 			continue
 		}
 
-		serviceType := parsedJson.Search("payloadPatches", "0", "service")
+		for _, child := range parsedJson.S("payload").Children() {
 
-		switch serviceType.String() {
+			serviceType := child.Search("header", "service")
 
-		case `"login":`:
-			log.Println("Successfully logged in")
+			switch serviceType.String() {
 
-		case `"chart"`:
-			s.chartHandler(message, parsedJson)
+			case `"login":`:
+				log.Println("Successfully logged in")
 
-		case `"instrument_search"`:
-			s.searchHandler(message, parsedJson)
+			case `"chart"`:
+				s.chartHandler(message, child)
+
+			case `"instrument_search"`:
+				s.searchHandler(message, child)
+
+			case `"optionSeries"`:
+				s.optionSeriesHandler(message, child)
+
+			case `"option_chain/get"`:
+				s.optionChainGetHandler(message, child)
+
+			}
+
 		}
 	}
 }

@@ -32,32 +32,7 @@ func (c *ChartRequestSignature) shortName() string {
 }
 
 type ChartStoredCache struct {
-	Symbol     string `json:"symbol"`
-	Instrument struct {
-		Symbol                 string `json:"symbol"`
-		RootSymbol             string `json:"rootSymbol"`
-		DisplaySymbol          string `json:"displaySymbol"`
-		RootDisplaySymbol      string `json:"rootDisplaySymbol"`
-		FutureOption           bool   `json:"futureOption"`
-		Description            string `json:"description"`
-		Multiplier             int    `json:"multiplier"`
-		SpreadsSupported       bool   `json:"spreadsSupported"`
-		Tradeable              bool   `json:"tradeable"`
-		InstrumentType         string `json:"instrumentType"`
-		ID                     int    `json:"id"`
-		SourceType             string `json:"sourceType"`
-		IsFutureProduct        bool   `json:"isFutureProduct"`
-		HasOptions             bool   `json:"hasOptions"`
-		Composite              bool   `json:"composite"`
-		FractionalType         string `json:"fractionalType"`
-		DaysToExpiration       int    `json:"daysToExpiration"`
-		SpreadDaysToExpiration string `json:"spreadDaysToExpiration"`
-		Cusip                  string `json:"cusip"`
-		Industry               int    `json:"industry"`
-		Spc                    int    `json:"spc"`
-		ExtoEnabled            bool   `json:"extoEnabled"`
-		Flags                  int    `json:"flags"`
-	} `json:"instrument"`
+	Symbol     string    `json:"symbol"`
 	Timestamps []int64   `json:"timestamps"`
 	Open       []float64 `json:"open"`
 	High       []float64 `json:"high"`
@@ -89,61 +64,66 @@ type updateChartObject struct {
 }
 
 func (s *Session) chartHandler(msg []byte, gab *gabs.Container) {
-	patches := gab.S("payloadPatches").Children()
-	for _, patchHead := range patches {
-		rID := patchHead.S("requestId")
-		patchHead := patchHead.S("patches").Children()
-		for _, patch := range patchHead {
 
-			// TODO: implement actual error handling, currently using log.Fatal()
-			// which is bad
-			var err error
-			bytesJson := patch.Bytes()
+	// get the request id from the header
+	rID := gab.Search("header", "id").String()
+	rID = rID[1 : len(rID)-1]
+	rService := gab.Search("header", "service").String()
+	rService = rService[1 : len(rService)-1]
 
-			var modifiedChart []byte
+	// get the patches
+	patches := gab.S("body", "patches").Children()
+	for _, patch := range patches {
+		// TODO: implement actual error handling, currently using log.Fatal()
+		// which is bad
+		var err error
+		bytesJson := patch.Bytes()
 
-			if patch.S("path").String() == "/error" {
+		var modifiedChart []byte
+
+		if patch.S("path").String() == "/error" {
+			continue
+		}
+
+		if patch.S("path").String() == `""` {
+			newChart := newChartObject{}
+			json.Unmarshal(bytesJson, &newChart)
+			newChart.Path = "/chart"
+			newChart.Value.RequestID = rID
+			newChart.Value.Service = rService
+			modifiedChart, err = json.Marshal([]newChartObject{newChart})
+		} else {
+			if rID != fmt.Sprintf("\"%s\"", s.CurrentState.Chart.RequestID) {
 				continue
 			}
+			updatedChart := updateChartObject{}
+			json.Unmarshal(bytesJson, &updatedChart)
+			updatedChart.Path = "/chart" + updatedChart.Path
+			modifiedChart, err = json.Marshal([]updateChartObject{updatedChart})
+		}
 
-			if patch.S("path").String() == `""` {
-				newChart := newChartObject{}
-				json.Unmarshal(bytesJson, &newChart)
-				newChart.Path = "/chart"
-				modifiedChart, err = json.Marshal([]newChartObject{newChart})
-			} else {
-				if rID.String() != fmt.Sprintf("\"%s\"", s.CurrentState.Chart.RequestID) {
-					continue
-				}
-				updatedChart := updateChartObject{}
-				json.Unmarshal(bytesJson, &updatedChart)
-				updatedChart.Path = "/chart" + updatedChart.Path
-				modifiedChart, err = json.Marshal([]updateChartObject{updatedChart})
-			}
+		if err != nil {
+			return
+		}
+		jspatch, err := jsonpatch.DecodePatch(modifiedChart)
+		if err != nil {
+			return
+		}
 
-			if err != nil {
-				return
-			}
-			jspatch, err := jsonpatch.DecodePatch(modifiedChart)
-			if err != nil {
-				return
-			}
+		byteState, _ := json.Marshal(s.CurrentState)
 
-			byteState, _ := json.Marshal(s.CurrentState)
+		byteState, err = jspatch.Apply(byteState)
+		if err != nil {
+			return
+		}
 
-			byteState, err = jspatch.Apply(byteState)
-			if err != nil {
-				return
-			}
+		var newState storedCache
+		json.Unmarshal(byteState, &newState)
 
-			var newState storedCache
-			json.Unmarshal(byteState, &newState)
+		s.CurrentState = newState
 
-			s.CurrentState = newState
-
-			if patch.S("path").String() == `""` {
-				s.TransactionChannel <- newState
-			}
+		if patch.S("path").String() == `""` {
+			s.TransactionChannel <- newState
 		}
 	}
 }
@@ -171,21 +151,30 @@ func (s *Session) RequestChart(specs ChartRequestSignature) (*ChartStoredCache, 
 
 	uniqueID := fmt.Sprintf("%s-%d", specs.shortName(), s.ChartRequestVers[specs.shortName()])
 
-	req := gatewayRequest{
-		Service:           "chart",
-		ID:                uniqueID,
-		Ver:               s.ChartRequestVers[specs.shortName()],
-		Symbol:            specs.Ticker,
-		AggregationPeriod: specs.Width,
-		Studies:           []string{},
-		Range:             specs.Range,
+	payload := gatewayRequestLoad{
+		Payload: []gatewayRequest{
+			{
+				Header: gatewayHeader{
+					Service: "chart",
+					ID:      uniqueID,
+					Ver:     s.ChartRequestVers[specs.shortName()],
+				},
+				Params: gatewayParams{
+					Symbol:            specs.Ticker,
+					AggregationPeriod: specs.Width,
+					Studies:           []string{},
+					Range:             specs.Range,
+				},
+			},
+		},
 	}
+
 	s.ChartRequestVers[specs.shortName()]++
-	payload := gatewayRequestLoad{[]gatewayRequest{req}}
 	s.wsConn.WriteJSON(payload)
 
 	internalChannel := make(chan storedCache)
-	ctx, _ := context.WithTimeout(context.Background(), time.Second)
+	ctx, ctxCancel := context.WithTimeout(context.Background(), time.Second)
+	defer ctxCancel()
 
 	go func() {
 		for {
@@ -212,8 +201,6 @@ func (s *Session) RequestChart(specs ChartRequestSignature) (*ChartStoredCache, 
 		return nil, ErrNotReceivedInTime
 	}
 
-	//unreachable code
-	return nil, nil
 }
 
 // RequestMultipleCharts takes a slice of ChartRequestSignature as an input and
@@ -247,13 +234,17 @@ func (s *Session) RequestMultipleCharts(specsSlice []ChartRequestSignature) ([]*
 		uniqueSpecs = append(uniqueSpecs, spec)
 
 		req := gatewayRequest{
-			Service:           "chart",
-			ID:                spec.UniqueID,
-			Ver:               s.ChartRequestVers[spec.shortName()],
-			Symbol:            spec.Ticker,
-			AggregationPeriod: spec.Width,
-			Studies:           []string{},
-			Range:             spec.Range,
+			Header: gatewayHeader{
+				Service: "chart",
+				ID:      spec.UniqueID,
+				Ver:     s.ChartRequestVers[spec.shortName()],
+			},
+			Params: gatewayParams{
+				Symbol:            spec.Ticker,
+				AggregationPeriod: spec.Width,
+				Studies:           []string{},
+				Range:             spec.Range,
+			},
 		}
 		s.ChartRequestVers[spec.shortName()]++
 
@@ -263,7 +254,8 @@ func (s *Session) RequestMultipleCharts(specsSlice []ChartRequestSignature) ([]*
 	s.wsConn.WriteJSON(payload)
 
 	internalChannel := make(chan []*ChartStoredCache)
-	ctx, _ := context.WithTimeout(context.Background(), time.Second)
+	ctx, ctxCancel := context.WithTimeout(context.Background(), time.Second)
+	defer ctxCancel()
 
 	go func() {
 		for {
