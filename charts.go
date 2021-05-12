@@ -31,7 +31,7 @@ func (c *ChartRequestSignature) shortName() string {
 	return fmt.Sprintf("CHART#%s@%s:%s", c.Ticker, c.Range, c.Width)
 }
 
-type chartStoredCache struct {
+type ChartStoredCache struct {
 	Symbol     string `json:"symbol"`
 	Instrument struct {
 		Symbol                 string `json:"symbol"`
@@ -79,7 +79,7 @@ type chartStoredCache struct {
 type newChartObject struct {
 	Op    string           `json:"op"`
 	Path  string           `json:"path"`
-	Value chartStoredCache `json:"value"`
+	Value ChartStoredCache `json:"value"`
 }
 
 type updateChartObject struct {
@@ -149,10 +149,10 @@ func (s *Session) chartHandler(msg []byte, gab *gabs.Container) {
 }
 
 // RequestChart takes a ChartRequestSignature as an input and responds with a
-// chartStoredCache object, it utilizes the cached if it can (with updated diffs), or
+// ChartStoredCache object, it utilizes the cached if it can (with updated diffs), or
 // else it makes a new request and waits for it - if a ticker does not load in
 // time, ErrNotReceviedInTime is sent as an error
-func (s *Session) RequestChart(specs ChartRequestSignature) (*chartStoredCache, error) {
+func (s *Session) RequestChart(specs ChartRequestSignature) (*ChartStoredCache, error) {
 
 	for {
 		if s.MutexLock == false {
@@ -220,7 +220,7 @@ func (s *Session) RequestChart(specs ChartRequestSignature) (*chartStoredCache, 
 // responds with a a slice of chart objects, it utilizes the cached if it can
 // (with updated diffs), or else it makes a new request and waits for it - if a
 // ticker does not load in time, ErrNotReceviedInTime is sent as an error
-func (s *Session) RequestMultipleCharts(specsSlice []ChartRequestSignature) ([]*chartStoredCache, []ChartRequestSignature) {
+func (s *Session) RequestMultipleCharts(specsSlice []ChartRequestSignature) ([]*ChartStoredCache, []ChartRequestSignature) {
 
 	for {
 		if s.MutexLock == false {
@@ -231,7 +231,7 @@ func (s *Session) RequestMultipleCharts(specsSlice []ChartRequestSignature) ([]*
 	}
 
 	payload := gatewayRequestLoad{}
-	response := []*chartStoredCache{}
+	response := []*ChartStoredCache{}
 	erroredTickers := []ChartRequestSignature{}
 	uniqueSpecs := []ChartRequestSignature{}
 
@@ -262,7 +262,7 @@ func (s *Session) RequestMultipleCharts(specsSlice []ChartRequestSignature) ([]*
 
 	s.wsConn.WriteJSON(payload)
 
-	internalChannel := make(chan []*chartStoredCache)
+	internalChannel := make(chan []*ChartStoredCache)
 	ctx, _ := context.WithTimeout(context.Background(), time.Second)
 
 	go func() {
