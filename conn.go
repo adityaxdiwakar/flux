@@ -130,6 +130,12 @@ func (s *Session) Open() error {
 	return nil
 }
 
+func (s *Session) sendJSON(v interface{}) error {
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+	return s.wsConn.WriteJSON(v)
+}
+
 func (s *Session) reconnectHandler() {
 	// latch to only establish a single handler (singleton)
 	if s.HandlerWorking == true {
@@ -144,11 +150,15 @@ func (s *Session) reconnectHandler() {
 
 	// reconnect every 20 minutes
 	for range time.Tick(20 * time.Minute) {
-		fmt.Println("[FLUX] Reconnecting...")
-		s.MutexLock = true
+		s.Mu.Lock()
+		fmt.Printf("\n")
+		log.Println("[FLUX] Restarting connection, attempting disconnect...")
 		s.Close()
+		log.Println("[FLUX] Attempting reconnect...")
 		s.Open()
-		s.MutexLock = false
+		log.Println("[FLUX] Connected")
+		time.Sleep(250 * time.Millisecond)
+		s.Mu.Unlock()
 	}
 }
 
@@ -175,7 +185,11 @@ func (s *Session) listen() {
 
 		_, message, err := s.wsConn.ReadMessage()
 		if err != nil {
-			log.Printf("error: closing websocket listen due to %v", err)
+			if s.MutexLock == true {
+				log.Printf("[FLUX] Disconnected with routine restart imminent...")
+			} else {
+				log.Printf("error: closing websocket listen due to %v", err)
+			}
 			break
 		}
 

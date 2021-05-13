@@ -2,6 +2,7 @@ package flux
 
 import (
 	"encoding/json"
+	"sync"
 
 	"github.com/adityaxdiwakar/tda-go"
 	"github.com/gorilla/websocket"
@@ -20,6 +21,7 @@ type Session struct {
 	SearchRequestVers         map[string]int
 	OptionSeriesRequestVers   map[string]int
 	OptionChainGetRequestVers map[string]int
+	Mu                        sync.Mutex
 	MutexLock                 bool
 	HandlerWorking            bool
 }

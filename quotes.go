@@ -90,18 +90,18 @@ type QuoteStoredCache struct {
 			BIDSIZE                    int     `json:"BID_SIZE,omitempty"`
 			BORROWSTATUS               string  `json:"BORROW_STATUS,omitempty"`
 			CLOSE                      float64 `json:"CLOSE,omitempty"`
-			DELTA                      int     `json:"DELTA,omitempty"`
+			DELTA                      float64 `json:"DELTA,omitempty"`
 			FRONTVOLATILITY            float64 `json:"FRONT_VOLATILITY,omitempty"`
-			GAMMA                      int     `json:"GAMMA,omitempty"`
+			GAMMA                      float64 `json:"GAMMA,omitempty"`
 			HIGH                       float64 `json:"HIGH,omitempty"`
 			HISTORICALVOLATILITY30DAYS float64 `json:"HISTORICAL_VOLATILITY_30_DAYS,omitempty"`
 			IMPLIEDVOLATILITY          float64 `json:"IMPLIED_VOLATILITY,omitempty"`
-			INITIALMARGIN              int     `json:"INITIAL_MARGIN,omitempty"`
-			LAST                       int     `json:"LAST,omitempty"`
+			INITIALMARGIN              float64 `json:"INITIAL_MARGIN,omitempty"`
+			LAST                       float64 `json:"LAST,omitempty"`
 			LASTEXCHANGE               string  `json:"LAST_EXCHANGE,omitempty"`
 			LASTSIZE                   int     `json:"LAST_SIZE,omitempty"`
 			LOW                        float64 `json:"LOW,omitempty"`
-			MARK                       int     `json:"MARK,omitempty"`
+			MARK                       float64 `json:"MARK,omitempty"`
 			MARKETCAP                  int     `json:"MARKET_CAP,omitempty"`
 			MARKCHANGE                 float64 `json:"MARK_CHANGE,omitempty"`
 			MARKPERCENTCHANGE          float64 `json:"MARK_PERCENT_CHANGE,omitempty"`
@@ -109,9 +109,9 @@ type QuoteStoredCache struct {
 			NETCHANGEPERCENT           float64 `json:"NET_CHANGE_PERCENT,omitempty"`
 			OPEN                       float64 `json:"OPEN,omitempty"`
 			PERCENTILEIV               float64 `json:"PERCENTILE_IV,omitempty"`
-			RHO                        int     `json:"RHO,omitempty"`
-			THETA                      int     `json:"THETA,omitempty"`
-			VEGA                       int     `json:"VEGA,omitempty"`
+			RHO                        float64 `json:"RHO,omitempty"`
+			THETA                      float64 `json:"THETA,omitempty"`
+			VEGA                       float64 `json:"VEGA,omitempty"`
 			VOLATILITYDIFFERENCE       float64 `json:"VOLATILITY_DIFFERENCE,omitempty"`
 			VOLATILITYINDEX            float64 `json:"VOLATILITY_INDEX,omitempty"`
 			VOLUME                     int     `json:"VOLUME,omitempty"`
@@ -200,13 +200,6 @@ func (s *Session) quoteHandler(msg []byte, gab *gabs.Container) {
 }
 
 func (s *Session) RequestQuote(specs QuoteRequestSignature) (*QuoteStoredCache, error) {
-	for {
-		if s.MutexLock == false {
-			break
-		} else {
-			time.Sleep(50 * time.Millisecond)
-		}
-	}
 
 	// force capitalization of tickers, since the socket is case sensitive
 	specs.Ticker = strings.ToUpper(specs.Ticker)
@@ -237,7 +230,7 @@ func (s *Session) RequestQuote(specs QuoteRequestSignature) (*QuoteStoredCache, 
 	}
 
 	s.QuoteRequestVers[specs.shortName()]++
-	s.wsConn.WriteJSON(payload)
+	s.sendJSON(payload)
 
 	internalChannel := make(chan storedCache)
 	ctx, ctxCancel := context.WithTimeout(context.Background(), time.Second)
