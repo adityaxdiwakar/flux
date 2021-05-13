@@ -1,6 +1,7 @@
 package flux
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -130,12 +131,20 @@ func (s *Session) Open() error {
 }
 
 func (s *Session) reconnectHandler() {
+	// latch to only establish a single handler (singleton)
 	if s.HandlerWorking == true {
 		return
 	}
 	s.HandlerWorking = true
-	defer func() { s.HandlerWorking = false }()
-	for range time.Tick(90 * time.Minute) {
+
+	// at the end of this function, delete this handler
+	defer func() {
+		s.HandlerWorking = false
+	}()
+
+	// reconnect every 20 minutes
+	for range time.Tick(20 * time.Minute) {
+		fmt.Println("[FLUX] Reconnecting...")
 		s.MutexLock = true
 		s.Close()
 		s.Open()

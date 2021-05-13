@@ -211,6 +211,7 @@ func (s *Session) RequestQuote(specs QuoteRequestSignature) (*QuoteStoredCache, 
 	// force capitalization of tickers, since the socket is case sensitive
 	specs.Ticker = strings.ToUpper(specs.Ticker)
 
+	// TODO: make this functional, it will currently not work
 	if s.CurrentState.Chart.RequestID == specs.shortName() {
 		return &s.CurrentState.Quote, nil
 	}
