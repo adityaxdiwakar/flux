@@ -34,6 +34,23 @@ func New(creds tda.Session) (*Session, error) {
 	return s, nil
 }
 
+func (s *Session) Reset() error {
+	if _, err := s.TdaSession.GetAccessToken(); err != nil {
+		return err
+	}
+
+	s.ConfigUrl = "https://trade.thinkorswim.com/v1/api/config"
+	s.CurrentState = storedCache{}
+	s.TransactionChannel = make(chan storedCache)
+	s.ChartRequestVers = make(map[string]int)
+	s.QuoteRequestVers = make(map[string]int)
+	s.SearchRequestVers = make(map[string]int)
+	s.OptionSeriesRequestVers = make(map[string]int)
+	s.OptionChainGetRequestVers = make(map[string]int)
+
+	return nil
+}
+
 // Open is a method that opens the websocket connection with the TDAmeritrade
 // server and returns an error if it is present
 func (s *Session) Open() error {
@@ -150,6 +167,7 @@ func (s *Session) reconnectHandler() {
 
 	// reconnect every 20 minutes
 	for range time.Tick(20 * time.Minute) {
+		s.MutexLock = true
 		s.Mu.Lock()
 		fmt.Printf("\n")
 		log.Println("[FLUX] Restarting connection, attempting disconnect...")
@@ -159,6 +177,7 @@ func (s *Session) reconnectHandler() {
 		log.Println("[FLUX] Connected")
 		time.Sleep(250 * time.Millisecond)
 		s.Mu.Unlock()
+		s.MutexLock = false
 	}
 }
 
@@ -189,6 +208,9 @@ func (s *Session) listen() {
 				log.Printf("[FLUX] Disconnected with routine restart imminent...")
 			} else {
 				log.Printf("error: closing websocket listen due to %v", err)
+				// trying to connect again
+				s.Reset()
+				s.Open()
 			}
 			break
 		}
