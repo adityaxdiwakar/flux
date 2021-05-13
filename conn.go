@@ -25,6 +25,7 @@ func New(creds tda.Session) (*Session, error) {
 	s.CurrentState = storedCache{}
 	s.TransactionChannel = make(chan storedCache)
 	s.ChartRequestVers = make(map[string]int)
+	s.QuoteRequestVers = make(map[string]int)
 	s.SearchRequestVers = make(map[string]int)
 	s.OptionSeriesRequestVers = make(map[string]int)
 	s.OptionChainGetRequestVers = make(map[string]int)
@@ -189,6 +190,7 @@ func (s *Session) listen() {
 				log.Println("Successfully logged in")
 
 			case `"chart"`:
+				// TODO: change this to chart_v27
 				s.chartHandler(message, child)
 
 			case `"instrument_search"`:
@@ -199,6 +201,9 @@ func (s *Session) listen() {
 
 			case `"option_chain/get"`:
 				s.optionChainGetHandler(message, child)
+
+			case `"quotes"`:
+				s.quoteHandler(message, child)
 
 			}
 

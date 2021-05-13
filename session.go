@@ -16,6 +16,7 @@ type Session struct {
 	CurrentState              storedCache
 	TransactionChannel        chan storedCache
 	ChartRequestVers          map[string]int
+	QuoteRequestVers          map[string]int
 	SearchRequestVers         map[string]int
 	OptionSeriesRequestVers   map[string]int
 	OptionChainGetRequestVers map[string]int
