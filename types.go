@@ -55,6 +55,10 @@ type gatewayParams struct {
 	Range             string                `json:"range,omitempty"`
 	Studies           []string              `json:"studies,omitempty"`
 	Filter            *OptionChainGetFilter `json:"filter,omitempty"`
+	Account           string                `json:"account,omitempty"`
+	Symbols           []string              `json:"symbols,omitempty"`
+	QuoteFields       []QuoteField          `json:"fields,omitempty"`
+	RefreshRate       int                   `json:"refreshRate,omitempty"`
 }
 
 type gatewayRequest struct {

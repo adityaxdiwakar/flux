@@ -64,13 +64,6 @@ type optionChainGetWrapper struct {
 }
 
 func (s *Session) RequestOptionChainGet(spec OptionChainGetRequestSignature) (*optionChainGetStoredCache, error) {
-	for {
-		if !s.MutexLock {
-			break
-		} else {
-			time.Sleep(50 * time.Millisecond)
-		}
-	}
 
 	uniqueID := fmt.Sprintf("%s-%d", spec.shortName(), s.OptionChainGetRequestVers[spec.shortName()])
 	spec.UniqueID = uniqueID
@@ -92,10 +85,11 @@ func (s *Session) RequestOptionChainGet(spec OptionChainGetRequestSignature) (*o
 	}
 
 	s.OptionChainGetRequestVers[spec.shortName()]++
-	s.wsConn.WriteJSON(payload)
+	s.sendJSON(payload)
 
 	internalChannel := make(chan storedCache)
-	ctx, _ := context.WithTimeout(context.Background(), time.Second)
+	ctx, ctxCancel := context.WithTimeout(context.Background(), time.Second)
+	defer ctxCancel()
 
 	go func() {
 		for {

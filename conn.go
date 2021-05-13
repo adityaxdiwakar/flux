@@ -1,6 +1,7 @@
 package flux
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -25,6 +26,7 @@ func New(creds tda.Session) (*Session, error) {
 	s.CurrentState = storedCache{}
 	s.TransactionChannel = make(chan storedCache)
 	s.ChartRequestVers = make(map[string]int)
+	s.QuoteRequestVers = make(map[string]int)
 	s.SearchRequestVers = make(map[string]int)
 	s.OptionSeriesRequestVers = make(map[string]int)
 	s.OptionChainGetRequestVers = make(map[string]int)
@@ -128,17 +130,35 @@ func (s *Session) Open() error {
 	return nil
 }
 
+func (s *Session) sendJSON(v interface{}) error {
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+	return s.wsConn.WriteJSON(v)
+}
+
 func (s *Session) reconnectHandler() {
+	// latch to only establish a single handler (singleton)
 	if s.HandlerWorking == true {
 		return
 	}
 	s.HandlerWorking = true
-	defer func() { s.HandlerWorking = false }()
-	for range time.Tick(90 * time.Minute) {
-		s.MutexLock = true
+
+	// at the end of this function, delete this handler
+	defer func() {
+		s.HandlerWorking = false
+	}()
+
+	// reconnect every 20 minutes
+	for range time.Tick(20 * time.Minute) {
+		s.Mu.Lock()
+		fmt.Printf("\n")
+		log.Println("[FLUX] Restarting connection, attempting disconnect...")
 		s.Close()
+		log.Println("[FLUX] Attempting reconnect...")
 		s.Open()
-		s.MutexLock = false
+		log.Println("[FLUX] Connected")
+		time.Sleep(250 * time.Millisecond)
+		s.Mu.Unlock()
 	}
 }
 
@@ -165,7 +185,11 @@ func (s *Session) listen() {
 
 		_, message, err := s.wsConn.ReadMessage()
 		if err != nil {
-			log.Printf("error: closing websocket listen due to %v", err)
+			if s.MutexLock == true {
+				log.Printf("[FLUX] Disconnected with routine restart imminent...")
+			} else {
+				log.Printf("error: closing websocket listen due to %v", err)
+			}
 			break
 		}
 
@@ -189,6 +213,7 @@ func (s *Session) listen() {
 				log.Println("Successfully logged in")
 
 			case `"chart"`:
+				// TODO: change this to chart_v27
 				s.chartHandler(message, child)
 
 			case `"instrument_search"`:
@@ -199,6 +224,9 @@ func (s *Session) listen() {
 
 			case `"option_chain/get"`:
 				s.optionChainGetHandler(message, child)
+
+			case `"quotes"`:
+				s.quoteHandler(message, child)
 
 			}
 
