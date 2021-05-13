@@ -134,14 +134,6 @@ func (s *Session) chartHandler(msg []byte, gab *gabs.Container) {
 // time, ErrNotReceviedInTime is sent as an error
 func (s *Session) RequestChart(specs ChartRequestSignature) (*ChartStoredCache, error) {
 
-	for {
-		if s.MutexLock == false {
-			break
-		} else {
-			time.Sleep(50 * time.Millisecond)
-		}
-	}
-
 	// force capitalization of tickers, since the socket is case sensitive
 	specs.Ticker = strings.ToUpper(specs.Ticker)
 
@@ -170,7 +162,7 @@ func (s *Session) RequestChart(specs ChartRequestSignature) (*ChartStoredCache, 
 	}
 
 	s.ChartRequestVers[specs.shortName()]++
-	s.wsConn.WriteJSON(payload)
+	s.sendJSON(payload)
 
 	internalChannel := make(chan storedCache)
 	ctx, ctxCancel := context.WithTimeout(context.Background(), time.Second)

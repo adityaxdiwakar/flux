@@ -47,13 +47,6 @@ type optionSeriesStoredCache struct {
 }
 
 func (s *Session) RequestOptionSeries(spec OptionSeriesRequestSignature) (*optionSeriesValue, error) {
-	for {
-		if s.MutexLock == false {
-			break
-		} else {
-			time.Sleep(50 * time.Millisecond)
-		}
-	}
 
 	uniqueID := fmt.Sprintf("%s-%d", spec.shortName(), s.OptionSeriesRequestVers[spec.shortName()])
 	spec.UniqueID = uniqueID
@@ -74,10 +67,11 @@ func (s *Session) RequestOptionSeries(spec OptionSeriesRequestSignature) (*optio
 	}
 
 	s.OptionSeriesRequestVers[spec.shortName()]++
-	s.wsConn.WriteJSON(payload)
+	s.sendJSON(payload)
 
 	internalChannel := make(chan storedCache)
-	ctx, _ := context.WithTimeout(context.Background(), time.Second)
+	ctx, ctxCancel := context.WithTimeout(context.Background(), time.Second)
+	defer ctxCancel()
 
 	go func() {
 		for {

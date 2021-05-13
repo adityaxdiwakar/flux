@@ -81,14 +81,6 @@ type searchStoredCache struct {
 // within a certain time, ErrNotReceivedInTime is sent as an error
 func (s *Session) RequestSearch(spec SearchRequestSignature) (*searchStoredCache, error) {
 
-	for {
-		if s.MutexLock == false {
-			break
-		} else {
-			time.Sleep(50 * time.Millisecond)
-		}
-	}
-
 	uniqueID := fmt.Sprintf("%s-%d", spec.shortName(), s.SearchRequestVers[spec.shortName()])
 	spec.UniqueID = uniqueID
 
@@ -109,7 +101,7 @@ func (s *Session) RequestSearch(spec SearchRequestSignature) (*searchStoredCache
 	}
 
 	s.SearchRequestVers[spec.shortName()]++
-	s.wsConn.WriteJSON(payload)
+	s.sendJSON(payload)
 
 	internalChannel := make(chan storedCache)
 	ctx, ctxCancel := context.WithTimeout(context.Background(), time.Second)
