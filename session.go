@@ -2,6 +2,7 @@ package flux
 
 import (
 	"encoding/json"
+	"hash/fnv"
 	"sync"
 
 	"github.com/adityaxdiwakar/tda-go"
@@ -24,6 +25,13 @@ type Session struct {
 	Mu                        sync.Mutex
 	MutexLock                 bool
 	HandlerWorking            bool
+	DebugFlag                 bool
+}
+
+func (s *Session) specHash(str string) int {
+	h := fnv.New32a()
+	h.Write([]byte(str))
+	return int(h.Sum32()) - (1<<31 - 1)
 }
 
 // Gateway returns the gateway URL as a string for the live trading connection

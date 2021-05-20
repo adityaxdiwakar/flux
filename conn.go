@@ -14,7 +14,7 @@ import (
 
 // New takes the input of a tda.Session (see github.com/adityaxdiwakar/tda-go)
 // and returns a flux Session which is used for all essentially library uses
-func New(creds tda.Session) (*Session, error) {
+func New(creds tda.Session, debug bool) (*Session, error) {
 	s := &Session{
 		TdaSession: creds,
 	}
@@ -22,6 +22,7 @@ func New(creds tda.Session) (*Session, error) {
 		return nil, err
 	}
 
+	s.DebugFlag = debug
 	s.ConfigUrl = "https://trade.thinkorswim.com/v1/api/config"
 	s.CurrentState = storedCache{}
 	s.TransactionChannel = make(chan storedCache)
@@ -215,6 +216,10 @@ func (s *Session) listen() {
 			break
 		}
 
+		if s.DebugFlag {
+			fmt.Println(string(message))
+		}
+
 		if strings.Contains(string(message), "heartbeat") {
 			continue
 		}
@@ -248,7 +253,7 @@ func (s *Session) listen() {
 				s.optionChainGetHandler(message, child)
 
 			case `"quotes"`:
-				s.quoteHandler(message, child)
+				go s.quoteHandler(message, child)
 
 			}
 

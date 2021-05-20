@@ -56,7 +56,7 @@ func (s *Session) RequestOptionSeries(spec OptionSeriesRequestSignature) (*optio
 			{
 				Header: gatewayHeader{
 					Service: "optionSeries",
-					Ver:     s.OptionSeriesRequestVers[spec.shortName()],
+					Ver:     int(s.OptionSeriesRequestVers[spec.shortName()]),
 					ID:      spec.UniqueID,
 				},
 				Params: gatewayParams{

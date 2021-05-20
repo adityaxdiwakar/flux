@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -120,6 +121,7 @@ type QuoteStoredCache struct {
 	} `json:"items"`
 	Service   string `json:"service"`
 	RequestID string `json:"requestId"`
+	Ver       int    `json:"ver"`
 }
 
 type newQuoteObject struct {
@@ -139,11 +141,16 @@ func (s *Session) quoteHandler(msg []byte, gab *gabs.Container) {
 	rID := gab.Search("header", "id").String()
 	rID = rID[1 : len(rID)-1]
 	rService := gab.Search("header", "service").String()
+	rVerStr := gab.Search("header", "ver").String()
+	rVer, _ := strconv.Atoi(rVerStr)
 	rService = rService[1 : len(rService)-1]
 
 	// get the patches
 	patches := gab.S("body", "patches").Children()
 	for _, patch := range patches {
+
+		// fmt.Printf("%d - %s (%s)\n", rVer, patch.S("path").String(), patch.S("value").String())
+
 		// TODO: implement actual error handling, currently using log.Fatal()
 		// which is bad
 		var err error
@@ -160,10 +167,11 @@ func (s *Session) quoteHandler(msg []byte, gab *gabs.Container) {
 			json.Unmarshal(bytesJson, &newQuote)
 			newQuote.Path = "/quote"
 			newQuote.Value.RequestID = rID
+			newQuote.Value.Ver = int(rVer)
 			newQuote.Value.Service = rService
 			modifiedQuote, err = json.Marshal([]newQuoteObject{newQuote})
 		} else {
-			if rID != fmt.Sprintf("\"%s\"", s.CurrentState.Quote.RequestID) {
+			if rVer != s.CurrentState.Quote.Ver {
 				continue
 			}
 			updatedQuote := updatedQuoteObject{}
@@ -205,7 +213,7 @@ func (s *Session) RequestQuote(specs QuoteRequestSignature) (*QuoteStoredCache, 
 	specs.Ticker = strings.ToUpper(specs.Ticker)
 
 	// TODO: make this functional, it will currently not work
-	if s.CurrentState.Chart.RequestID == specs.shortName() {
+	if len(s.CurrentState.Quote.Items) != 00 && s.CurrentState.Quote.Items[0].Symbol == specs.Ticker {
 		return &s.CurrentState.Quote, nil
 	}
 
@@ -216,8 +224,8 @@ func (s *Session) RequestQuote(specs QuoteRequestSignature) (*QuoteStoredCache, 
 			{
 				Header: gatewayHeader{
 					Service: "quotes",
-					ID:      uniqueID,
-					Ver:     s.QuoteRequestVers[specs.shortName()],
+					ID:      "fluxQuotes",
+					Ver:     s.specHash(fmt.Sprintf("%s-%d", specs.shortName(), s.QuoteRequestVers[specs.shortName()])),
 				},
 				Params: gatewayParams{
 					Account:     "COMBINED ACCOUNT",
@@ -241,7 +249,7 @@ func (s *Session) RequestQuote(specs QuoteRequestSignature) (*QuoteStoredCache, 
 			select {
 
 			case recvPayload := <-s.TransactionChannel:
-				if recvPayload.Quote.RequestID == uniqueID {
+				if recvPayload.Quote.Ver == s.specHash(uniqueID) {
 					internalChannel <- recvPayload
 					return
 				}

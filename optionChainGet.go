@@ -73,7 +73,7 @@ func (s *Session) RequestOptionChainGet(spec OptionChainGetRequestSignature) (*o
 			{
 				Header: gatewayHeader{
 					Service: "option_chain/get",
-					Ver:     s.OptionChainGetRequestVers[spec.shortName()],
+					Ver:     int(s.OptionChainGetRequestVers[spec.shortName()]),
 					ID:      spec.UniqueID,
 				},
 				Params: gatewayParams{

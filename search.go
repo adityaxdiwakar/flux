@@ -89,7 +89,7 @@ func (s *Session) RequestSearch(spec SearchRequestSignature) (*searchStoredCache
 			{
 				Header: gatewayHeader{
 					Service: "instrument_search",
-					Ver:     s.SearchRequestVers[spec.shortName()],
+					Ver:     int(s.SearchRequestVers[spec.shortName()]),
 					ID:      spec.UniqueID,
 				},
 				Params: gatewayParams{

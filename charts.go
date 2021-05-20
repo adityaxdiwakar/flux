@@ -149,7 +149,7 @@ func (s *Session) RequestChart(specs ChartRequestSignature) (*ChartStoredCache, 
 				Header: gatewayHeader{
 					Service: "chart",
 					ID:      uniqueID,
-					Ver:     s.ChartRequestVers[specs.shortName()],
+					Ver:     int(s.ChartRequestVers[specs.shortName()]),
 				},
 				Params: gatewayParams{
 					Symbol:            specs.Ticker,
@@ -229,7 +229,7 @@ func (s *Session) RequestMultipleCharts(specsSlice []ChartRequestSignature) ([]*
 			Header: gatewayHeader{
 				Service: "chart",
 				ID:      spec.UniqueID,
-				Ver:     s.ChartRequestVers[spec.shortName()],
+				Ver:     int(s.ChartRequestVers[spec.shortName()]),
 			},
 			Params: gatewayParams{
 				Symbol:            spec.Ticker,
