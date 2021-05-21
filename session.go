@@ -17,12 +17,14 @@ type Session struct {
 	ConfigUrl                 string
 	CurrentState              storedCache
 	TransactionChannel        chan storedCache
+	NotificationChannel       chan bool
 	ChartRequestVers          map[string]int
 	QuoteRequestVers          map[string]int
 	SearchRequestVers         map[string]int
 	OptionSeriesRequestVers   map[string]int
 	OptionChainGetRequestVers map[string]int
 	Mu                        sync.Mutex
+	QuoteMu                   sync.Mutex
 	MutexLock                 bool
 	HandlerWorking            bool
 	DebugFlag                 bool

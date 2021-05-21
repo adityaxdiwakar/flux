@@ -26,6 +26,7 @@ func New(creds tda.Session, debug bool) (*Session, error) {
 	s.ConfigUrl = "https://trade.thinkorswim.com/v1/api/config"
 	s.CurrentState = storedCache{}
 	s.TransactionChannel = make(chan storedCache)
+	s.NotificationChannel = make(chan bool, 50)
 	s.ChartRequestVers = make(map[string]int)
 	s.QuoteRequestVers = make(map[string]int)
 	s.SearchRequestVers = make(map[string]int)

@@ -153,38 +153,18 @@ func (s *Session) quoteHandler(msg []byte, gab *gabs.Container) {
 
 		// TODO: implement actual error handling, currently using log.Fatal()
 		// which is bad
-		var err error
-		bytesJson := patch.Bytes()
-
-		var modifiedQuote []byte
 
 		if patch.S("path").String() == "/error" {
 			continue
 		}
 
-		if patch.S("path").String() == `""` {
-			newQuote := newQuoteObject{}
-			json.Unmarshal(bytesJson, &newQuote)
-			newQuote.Path = "/quote"
-			newQuote.Value.RequestID = rID
-			newQuote.Value.Ver = int(rVer)
-			newQuote.Value.Service = rService
-			modifiedQuote, err = json.Marshal([]newQuoteObject{newQuote})
-		} else {
-			if rVer != s.CurrentState.Quote.Ver {
-				continue
-			}
-			updatedQuote := updatedQuoteObject{}
-			json.Unmarshal(bytesJson, &updatedQuote)
-			updatedQuote.Path = "/quote" + updatedQuote.Path
-			modifiedQuote, err = json.Marshal([]updatedQuoteObject{updatedQuote})
-		}
+		path := patch.S("path").String()
+		patch.Set(fmt.Sprintf("/quote%s", path[1:len(path)-1]), "path")
 
-		if err != nil {
-			return
-		}
+		bytesJson, _ := patch.MarshalJSON()
+		patchStr := "[" + string(bytesJson) + "]"
+		jspatch, err := jsonpatch.DecodePatch([]byte(patchStr))
 
-		jspatch, err := jsonpatch.DecodePatch(modifiedQuote)
 		if err != nil {
 			return
 		}
@@ -198,12 +178,14 @@ func (s *Session) quoteHandler(msg []byte, gab *gabs.Container) {
 
 		var newState storedCache
 		json.Unmarshal(byteState, &newState)
+		newState.Quote.RequestID = rID
+		newState.Quote.Service = rService
+		newState.Quote.Ver = int(rVer)
 
 		s.CurrentState = newState
 
-		if patch.S("path").String() == `""` {
-			s.TransactionChannel <- newState
-		}
+		s.NotificationChannel <- true
+		s.TransactionChannel <- newState
 	}
 }
 
@@ -211,21 +193,21 @@ func (s *Session) RequestQuote(specs QuoteRequestSignature) (*QuoteStoredCache, 
 
 	// force capitalization of tickers, since the socket is case sensitive
 	specs.Ticker = strings.ToUpper(specs.Ticker)
+	uniqueID := fmt.Sprintf("%s-%d", specs.shortName(), s.QuoteRequestVers[specs.shortName()])
 
-	// TODO: make this functional, it will currently not work
-	if len(s.CurrentState.Quote.Items) != 00 && s.CurrentState.Quote.Items[0].Symbol == specs.Ticker {
+	if len(s.CurrentState.Quote.Items) != 0 &&
+		s.CurrentState.Quote.Ver == s.specHash(fmt.Sprintf("%s-%d", specs.shortName(), s.QuoteRequestVers[specs.shortName()]-1)) {
 		return &s.CurrentState.Quote, nil
 	}
 
-	uniqueID := fmt.Sprintf("%s-%d", specs.shortName(), s.QuoteRequestVers[specs.shortName()])
-
+	hash := s.specHash(uniqueID)
 	payload := gatewayRequestLoad{
 		Payload: []gatewayRequest{
 			{
 				Header: gatewayHeader{
 					Service: "quotes",
 					ID:      "fluxQuotes",
-					Ver:     s.specHash(fmt.Sprintf("%s-%d", specs.shortName(), s.QuoteRequestVers[specs.shortName()])),
+					Ver:     hash,
 				},
 				Params: gatewayParams{
 					Account:     "COMBINED ACCOUNT",
@@ -237,35 +219,23 @@ func (s *Session) RequestQuote(specs QuoteRequestSignature) (*QuoteStoredCache, 
 		},
 	}
 
+	s.QuoteMu.Lock()
+	defer s.QuoteMu.Unlock()
 	s.QuoteRequestVers[specs.shortName()]++
 	s.sendJSON(payload)
 
-	internalChannel := make(chan storedCache)
-	ctx, ctxCancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, ctxCancel := context.WithTimeout(context.Background(), 1000*time.Millisecond)
 	defer ctxCancel()
 
-	go func() {
-		for {
-			select {
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, ErrNotReceivedInTime
 
-			case recvPayload := <-s.TransactionChannel:
-				if recvPayload.Quote.Ver == s.specHash(uniqueID) {
-					internalChannel <- recvPayload
-					return
-				}
-
-			case <-ctx.Done():
-				break
+		case <-s.NotificationChannel:
+			if s.CurrentState.Quote.Ver == hash {
+				return &s.CurrentState.Quote, nil
 			}
 		}
-	}()
-
-	select {
-
-	case recvPayload := <-internalChannel:
-		return &recvPayload.Quote, nil
-
-	case <-ctx.Done():
-		return nil, ErrNotReceivedInTime
 	}
 }
