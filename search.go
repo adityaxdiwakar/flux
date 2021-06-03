@@ -7,19 +7,43 @@ import (
 	"time"
 
 	"github.com/Jeffail/gabs/v2"
+	jsonpatch "github.com/evanphx/json-patch"
 )
 
 func (s *Session) searchHandler(msg []byte, patch *gabs.Container) {
-	patch = patch.S("payloadPatches", "0", "patches", "0")
+	rID := patch.Search("header", "id").String()
+	rID = rID[1 : len(rID)-1]
+	rService := patch.Search("header", "service").String()
+	rService = rService[1 : len(rService)-1]
 
-	var state SearchStoredCache
-	err := json.Unmarshal(patch.Bytes(), &state)
+	patch = patch.S("body", "patches", "0")
+
+	newSearch := newSearchObject{}
+	json.Unmarshal(patch.Bytes(), &newSearch)
+	newSearch.Path = "/search"
+	newSearch.Value.RequestID = rID
+	newSearch.Value.Service = rService
+	modifiedSearch, err := json.Marshal([]newSearchObject{newSearch})
 	if err != nil {
 		return
 	}
 
-	state.Path = "/instrument_search"
-	s.CurrentState.Search = state
+	jspatch, err := jsonpatch.DecodePatch(modifiedSearch)
+	if err != nil {
+		return
+	}
+
+	byteState, _ := json.Marshal(s.CurrentState)
+
+	byteState, err = jspatch.Apply(byteState)
+	if err != nil {
+		return
+	}
+
+	var newState storedCache
+	json.Unmarshal(byteState, &newState)
+
+	s.CurrentState = newState
 	s.TransactionChannel <- s.CurrentState
 }
 
@@ -42,38 +66,40 @@ func (r *SearchRequestSignature) shortName() string {
 
 // SearchStoredCache is the response for search request
 type SearchStoredCache struct {
-	Op    string `json:"op"`
-	Path  string `json:"path"`
-	Value struct {
-		Instruments []struct {
-			Composite              bool   `json:"composite"`
-			Cusip                  string `json:"cusip,omitempty"`
-			DaysToExpiration       int    `json:"daysToExpiration"`
-			Description            string `json:"description"`
-			DisplaySymbol          string `json:"displaySymbol"`
-			ExtoEnabled            bool   `json:"extoEnabled"`
-			Flags                  int    `json:"flags"`
-			FractionalType         string `json:"fractionalType"`
-			FutureOption           bool   `json:"futureOption"`
-			HasOptions             bool   `json:"hasOptions"`
-			ID                     int    `json:"id"`
-			Industry               int    `json:"industry"`
-			InstrumentType         string `json:"instrumentType"`
-			IsFutureProduct        bool   `json:"isFutureProduct"`
-			Multiplier             int    `json:"multiplier"`
-			RootDisplaySymbol      string `json:"rootDisplaySymbol"`
-			RootSymbol             string `json:"rootSymbol"`
-			SourceType             string `json:"sourceType"`
-			Spc                    int    `json:"spc"`
-			SpreadDaysToExpiration string `json:"spreadDaysToExpiration"`
-			SpreadsSupported       bool   `json:"spreadsSupported"`
-			Symbol                 string `json:"symbol"`
-			Tradeable              bool   `json:"tradeable"`
-		} `json:"instruments"`
-		RequestID  string `json:"requestId"`
-		RequestVer int    `json:"requestVer"`
-		Service    string `json:"service"`
-	} `json:"value"`
+	Instruments []struct {
+		Composite              bool   `json:"composite"`
+		Cusip                  string `json:"cusip,omitempty"`
+		DaysToExpiration       int    `json:"daysToExpiration"`
+		Description            string `json:"description"`
+		DisplaySymbol          string `json:"displaySymbol"`
+		ExtoEnabled            bool   `json:"extoEnabled"`
+		Flags                  int    `json:"flags"`
+		FractionalType         string `json:"fractionalType"`
+		FutureOption           bool   `json:"futureOption"`
+		HasOptions             bool   `json:"hasOptions"`
+		ID                     int    `json:"id"`
+		Industry               int    `json:"industry"`
+		InstrumentType         string `json:"instrumentType"`
+		IsFutureProduct        bool   `json:"isFutureProduct"`
+		Multiplier             int    `json:"multiplier"`
+		RootDisplaySymbol      string `json:"rootDisplaySymbol"`
+		RootSymbol             string `json:"rootSymbol"`
+		SourceType             string `json:"sourceType"`
+		Spc                    int    `json:"spc"`
+		SpreadDaysToExpiration string `json:"spreadDaysToExpiration"`
+		SpreadsSupported       bool   `json:"spreadsSupported"`
+		Symbol                 string `json:"symbol"`
+		Tradeable              bool   `json:"tradeable"`
+	} `json:"instruments"`
+	RequestID  string `json:"requestId"`
+	RequestVer int    `json:"requestVer"`
+	Service    string `json:"service"`
+}
+
+type newSearchObject struct {
+	Op    string            `json:"op"`
+	Path  string            `json:"path"`
+	Value SearchStoredCache `json:"value"`
 }
 
 // RequestSearch takes a SearchRequestSignature as an input and responds with a
@@ -113,7 +139,7 @@ func (s *Session) RequestSearch(spec SearchRequestSignature) (*SearchStoredCache
 			select {
 
 			case recvPayload := <-s.TransactionChannel:
-				if recvPayload.Search.Value.RequestID == spec.UniqueID {
+				if recvPayload.Search.RequestID == spec.UniqueID {
 					internalChannel <- recvPayload
 					return
 				}
