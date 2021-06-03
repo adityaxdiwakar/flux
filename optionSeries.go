@@ -9,6 +9,7 @@ import (
 	"github.com/Jeffail/gabs/v2"
 )
 
+// OptionSeriesRequestSignature is the parameter for a chart request
 type OptionSeriesRequestSignature struct {
 	// ticker for option series request
 	Ticker string
@@ -33,7 +34,8 @@ type optionSeries struct {
 	SettlementType  string    `json:"settlementType"`
 }
 
-type optionSeriesValue struct {
+// OptionSeriesCache is an object containing what is returned from an option series request
+type OptionSeriesCache struct {
 	Series     []optionSeries `json:"series"`
 	Service    string         `json:"service"`
 	RequestID  string         `json:"requestId"`
@@ -43,10 +45,11 @@ type optionSeriesValue struct {
 type optionSeriesStoredCache struct {
 	Op    string            `json:"op"`
 	Path  string            `json:"path"`
-	Value optionSeriesValue `json:"value"`
+	Value OptionSeriesCache `json:"value"`
 }
 
-func (s *Session) RequestOptionSeries(spec OptionSeriesRequestSignature) (*optionSeriesValue, error) {
+// RequestOptionSeries returns options series data for a specific series based on the spec provided
+func (s *Session) RequestOptionSeries(spec OptionSeriesRequestSignature) (*OptionSeriesCache, error) {
 
 	uniqueID := fmt.Sprintf("%s-%d", spec.shortName(), s.OptionSeriesRequestVers[spec.shortName()])
 	spec.UniqueID = uniqueID

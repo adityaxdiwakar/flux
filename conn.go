@@ -23,7 +23,7 @@ func New(creds tda.Session, debug bool) (*Session, error) {
 	}
 
 	s.DebugFlag = debug
-	s.ConfigUrl = "https://trade.thinkorswim.com/v1/api/config"
+	s.ConfigURL = "https://trade.thinkorswim.com/v1/api/config"
 	s.CurrentState = storedCache{}
 	s.TransactionChannel = make(chan storedCache)
 	s.NotificationChannel = make(chan bool, 50)
@@ -36,12 +36,13 @@ func New(creds tda.Session, debug bool) (*Session, error) {
 	return s, nil
 }
 
+// Reset resets the state; it does not reset the connection
 func (s *Session) Reset() error {
 	if _, err := s.TdaSession.GetAccessToken(); err != nil {
 		return err
 	}
 
-	s.ConfigUrl = "https://trade.thinkorswim.com/v1/api/config"
+	s.ConfigURL = "https://trade.thinkorswim.com/v1/api/config"
 	s.CurrentState = storedCache{}
 	s.TransactionChannel = make(chan storedCache)
 	s.ChartRequestVers = make(map[string]int)
@@ -225,13 +226,13 @@ func (s *Session) listen() {
 			continue
 		}
 
-		parsedJson, err := gabs.ParseJSON(message)
+		parsedJSON, err := gabs.ParseJSON(message)
 		// TODO: handle this better rather than ignoring the message
 		if err != nil {
 			continue
 		}
 
-		for _, child := range parsedJson.S("payload").Children() {
+		for _, child := range parsedJSON.S("payload").Children() {
 
 			serviceType := child.Search("header", "service")
 

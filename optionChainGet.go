@@ -9,6 +9,7 @@ import (
 	"github.com/Jeffail/gabs/v2"
 )
 
+// OptionChainGetRequestSignature is the parameter for an option chain request
 type OptionChainGetRequestSignature struct {
 	// ticker for option chain get request
 	Underlying string
@@ -20,6 +21,7 @@ type OptionChainGetRequestSignature struct {
 	UniqueID string
 }
 
+// OptionChainGetFilter is the sub-parameter for filtering an option chain
 type OptionChainGetFilter struct {
 	StrikeQuantity int64    `json:"strikeQuantity,omitempty"`
 	SeriesNames    []string `json:"seriesNames,omitempty"`
@@ -37,7 +39,8 @@ type optionChainPairs struct {
 	PutDisplaySymbol  string  `json:"putDisplaySymbol"`
 }
 
-type optionChainSeries struct {
+// OptionChainSeries are individual series from the option chain get response
+type OptionChainSeries struct {
 	Expiration       string             `json:"expiration"`
 	ExpirationString string             `json:"expirationString"`
 	FractionalType   string             `json:"fractionalType"`
@@ -50,8 +53,9 @@ type optionChainSeries struct {
 	SettlementType   string             `json:"settlementType"`
 }
 
-type optionChainGetStoredCache struct {
-	OptionSeries []optionChainSeries `json:"optionSeries"`
+// OptionChainGetStoredCache is an object containing what is returned from an option chain request
+type OptionChainGetStoredCache struct {
+	OptionSeries []OptionChainSeries `json:"optionSeries"`
 	Service      string              `json:"service"`
 	RequestID    string              `json:"requestId"`
 	RequestVer   int                 `json:"requestVer"`
@@ -60,10 +64,11 @@ type optionChainGetStoredCache struct {
 type optionChainGetWrapper struct {
 	Op    string                    `json:"op"`
 	Path  string                    `json:"path"`
-	Value optionChainGetStoredCache `json:"value"`
+	Value OptionChainGetStoredCache `json:"value"`
 }
 
-func (s *Session) RequestOptionChainGet(spec OptionChainGetRequestSignature) (*optionChainGetStoredCache, error) {
+// RequestOptionChainGet requests to get an option chain with the input being the OptionChainGetRequestSignature
+func (s *Session) RequestOptionChainGet(spec OptionChainGetRequestSignature) (*OptionChainGetStoredCache, error) {
 
 	uniqueID := fmt.Sprintf("%s-%d", spec.shortName(), s.OptionChainGetRequestVers[spec.shortName()])
 	spec.UniqueID = uniqueID

@@ -14,7 +14,7 @@ import (
 type Session struct {
 	TdaSession                tda.Session
 	wsConn                    *websocket.Conn
-	ConfigUrl                 string
+	ConfigURL                 string
 	CurrentState              storedCache
 	TransactionChannel        chan storedCache
 	NotificationChannel       chan bool
