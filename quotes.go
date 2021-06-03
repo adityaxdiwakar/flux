@@ -12,55 +12,101 @@ import (
 	jsonpatch "github.com/evanphx/json-patch"
 )
 
+// QuoteField is a custom type for quote fields (backed by string)
 type QuoteField string
 
 const (
-	Mark              = QuoteField("MARK")
-	MarkChange        = QuoteField("MARK_CHANGE")
+	// Mark field
+	Mark = QuoteField("MARK")
+	// MarkChange field
+	MarkChange = QuoteField("MARK_CHANGE")
+	// MarkPercentChange field
 	MarkPercentChange = QuoteField("MARK_PERCENT_CHANGE")
-	NetChange         = QuoteField("NET_CHANGE")
-	NetPercentChange  = QuoteField("NET_CHANGE_PERCENT")
-	Bid               = QuoteField("BID")
-	BidExchange       = QuoteField("BID_EXCHANGE")
-	Ask               = QuoteField("ASK")
-	AskExchange       = QuoteField("ASK_EXCHANGE")
-	BidSize           = QuoteField("BID_SIZE")
-	AskSize           = QuoteField("ASK_SIZE")
-	Volume            = QuoteField("VOLUME")
-	Open              = QuoteField("OPEN")
-	High52            = QuoteField("HIGH52")
-	Low52             = QuoteField("LOW52")
-	High              = QuoteField("HIGH")
-	Low               = QuoteField("LOW")
-	VWAP              = QuoteField("VWAP")
-	VolIdx            = QuoteField("VOLATILITY_INDEX")
-	ImplVol           = QuoteField("IMPLIED_VOLATILITY")
-	MMMove            = QuoteField("MARKET_MAKER_MOVE")
-	PercentIV         = QuoteField("PERCENT_IV")
-	HistoricalVol30   = QuoteField("HISTORICAL_VOLATILITY_30_DAYS")
-	MktCap            = QuoteField("MARKET_CAP")
-	Beta              = QuoteField("BETA")
-	PE                = QuoteField("PE")
-	InitMargin        = QuoteField("INITIAL_MARGIN")
-	Last              = QuoteField("LAST")
-	LastSize          = QuoteField("LAST_SIZE")
-	LastExchange      = QuoteField("LAST_EXCHANGE")
-	Rho               = QuoteField("RHO")
-	BorrowStatus      = QuoteField("BORROW_STATUS")
-	Delta             = QuoteField("DELTA")
-	Gamma             = QuoteField("GAMMA")
-	Theta             = QuoteField("THETA")
-	Vega              = QuoteField("VEGA")
-	DivAmount         = QuoteField("DIV_AMOUNT")
-	EPS               = QuoteField("EPS")
-	ExdDivDate        = QuoteField("EXD_DIV_DATE")
-	Yield             = QuoteField("YIELD")
-	FrontVol          = QuoteField("FRONT_VOLATILITY")
-	BackVol           = QuoteField("BACK_VOLATILITY")
-	VolDiff           = QuoteField("VOLATILITY_DIFFERENCE")
-	Close             = QuoteField("CLOSE")
+	// NetChange field
+	NetChange = QuoteField("NET_CHANGE")
+	// NetPercentChange field
+	NetPercentChange = QuoteField("NET_CHANGE_PERCENT")
+	// Bid field
+	Bid = QuoteField("BID")
+	// BidExchange field
+	BidExchange = QuoteField("BID_EXCHANGE")
+	// Ask field
+	Ask = QuoteField("ASK")
+	// AskExchange field
+	AskExchange = QuoteField("ASK_EXCHANGE")
+	// BidSize field
+	BidSize = QuoteField("BID_SIZE")
+	// AskSize field
+	AskSize = QuoteField("ASK_SIZE")
+	// Volume field
+	Volume = QuoteField("VOLUME")
+	// Open field
+	Open = QuoteField("OPEN")
+	// High52 field
+	High52 = QuoteField("HIGH52")
+	// Low52 field
+	Low52 = QuoteField("LOW52")
+	// High field
+	High = QuoteField("HIGH")
+	// Low field
+	Low = QuoteField("LOW")
+	// VWAP field
+	VWAP = QuoteField("VWAP")
+	// VolIdx field
+	VolIdx = QuoteField("VOLATILITY_INDEX")
+	// ImplVol field
+	ImplVol = QuoteField("IMPLIED_VOLATILITY")
+	// MMMove field
+	MMMove = QuoteField("MARKET_MAKER_MOVE")
+	// PercentIV field
+	PercentIV = QuoteField("PERCENT_IV")
+	// HistoricalVol30 field
+	HistoricalVol30 = QuoteField("HISTORICAL_VOLATILITY_30_DAYS")
+	// MktCap field
+	MktCap = QuoteField("MARKET_CAP")
+	// Beta field
+	Beta = QuoteField("BETA")
+	// PE field
+	PE = QuoteField("PE")
+	// InitMargin field
+	InitMargin = QuoteField("INITIAL_MARGIN")
+	// Last field
+	Last = QuoteField("LAST")
+	// LastSize field
+	LastSize = QuoteField("LAST_SIZE")
+	// LastExchange field
+	LastExchange = QuoteField("LAST_EXCHANGE")
+	// Rho field
+	Rho = QuoteField("RHO")
+	// BorrowStatus field
+	BorrowStatus = QuoteField("BORROW_STATUS")
+	// Delta field
+	Delta = QuoteField("DELTA")
+	// Gamma field
+	Gamma = QuoteField("GAMMA")
+	// Theta field
+	Theta = QuoteField("THETA")
+	// Vega field
+	Vega = QuoteField("VEGA")
+	// DivAmount field
+	DivAmount = QuoteField("DIV_AMOUNT")
+	// EPS field
+	EPS = QuoteField("EPS")
+	// ExdDivDate field
+	ExdDivDate = QuoteField("EXD_DIV_DATE")
+	// Yield field
+	Yield = QuoteField("YIELD")
+	// FrontVol field
+	FrontVol = QuoteField("FRONT_VOLATILITY")
+	// BackVol field
+	BackVol = QuoteField("BACK_VOLATILITY")
+	// VolDiff field
+	VolDiff = QuoteField("VOLATILITY_DIFFERENCE")
+	// Close field
+	Close = QuoteField("CLOSE")
 )
 
+// QuoteRequestSignature is the parameter for a quote request
 type QuoteRequestSignature struct {
 	// ticker for the content of a quote request
 	Ticker string
@@ -77,6 +123,7 @@ func (q *QuoteRequestSignature) shortName() string {
 	return fmt.Sprintf("QUOTE#%s@%d(W:%d)", q.Ticker, q.RefreshRate, len(q.Fields))
 }
 
+// QuoteStoredCache is the response from a quote request
 type QuoteStoredCache struct {
 	Items []struct {
 		Symbol string `json:"symbol"`
@@ -161,8 +208,8 @@ func (s *Session) quoteHandler(msg []byte, gab *gabs.Container) {
 		path := patch.S("path").String()
 		patch.Set(fmt.Sprintf("/quote%s", path[1:len(path)-1]), "path")
 
-		bytesJson, _ := patch.MarshalJSON()
-		patchStr := "[" + string(bytesJson) + "]"
+		bytesJSON, _ := patch.MarshalJSON()
+		patchStr := "[" + string(bytesJSON) + "]"
 		jspatch, err := jsonpatch.DecodePatch([]byte(patchStr))
 
 		if err != nil {
@@ -189,6 +236,7 @@ func (s *Session) quoteHandler(msg []byte, gab *gabs.Container) {
 	}
 }
 
+// RequestQuote returns the quote for the relevant spec with the fields requested
 func (s *Session) RequestQuote(specs QuoteRequestSignature) (*QuoteStoredCache, error) {
 
 	// force capitalization of tickers, since the socket is case sensitive

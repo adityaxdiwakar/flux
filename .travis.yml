@@ -1,0 +1,9 @@
+language: go
+go:
+  - 1.14.x
+  - 1.15.x
+before_install:
+  - go get -u golang.org/x/lint/golint
+script:
+  - golint *.go
+  - test -z "`golint *.go`"

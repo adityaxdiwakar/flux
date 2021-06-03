@@ -31,6 +31,7 @@ func (c *ChartRequestSignature) shortName() string {
 	return fmt.Sprintf("CHART#%s@%s:%s", c.Ticker, c.Range, c.Width)
 }
 
+// ChartStoredCache is an object containing what is returned from a chart request
 type ChartStoredCache struct {
 	Symbol     string    `json:"symbol"`
 	Timestamps []int64   `json:"timestamps"`
@@ -46,6 +47,8 @@ type ChartStoredCache struct {
 		IsActual    bool   `json:"isActual"`
 		Time        int64  `json:"time"`
 	} `json:"events"`
+
+	// these can be ignored
 	Service    string `json:"service"`
 	RequestID  string `json:"requestId"`
 	RequestVer int    `json:"requestVer"`
@@ -77,7 +80,7 @@ func (s *Session) chartHandler(msg []byte, gab *gabs.Container) {
 		// TODO: implement actual error handling, currently using log.Fatal()
 		// which is bad
 		var err error
-		bytesJson := patch.Bytes()
+		bytesJSON := patch.Bytes()
 
 		var modifiedChart []byte
 
@@ -87,7 +90,7 @@ func (s *Session) chartHandler(msg []byte, gab *gabs.Container) {
 
 		if patch.S("path").String() == `""` {
 			newChart := newChartObject{}
-			json.Unmarshal(bytesJson, &newChart)
+			json.Unmarshal(bytesJSON, &newChart)
 			newChart.Path = "/chart"
 			newChart.Value.RequestID = rID
 			newChart.Value.Service = rService
@@ -97,7 +100,7 @@ func (s *Session) chartHandler(msg []byte, gab *gabs.Container) {
 				continue
 			}
 			updatedChart := updateChartObject{}
-			json.Unmarshal(bytesJson, &updatedChart)
+			json.Unmarshal(bytesJSON, &updatedChart)
 			updatedChart.Path = "/chart" + updatedChart.Path
 			modifiedChart, err = json.Marshal([]updateChartObject{updatedChart})
 		}

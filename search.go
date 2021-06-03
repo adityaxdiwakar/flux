@@ -12,7 +12,7 @@ import (
 func (s *Session) searchHandler(msg []byte, patch *gabs.Container) {
 	patch = patch.S("payloadPatches", "0", "patches", "0")
 
-	var state searchStoredCache
+	var state SearchStoredCache
 	err := json.Unmarshal(patch.Bytes(), &state)
 	if err != nil {
 		return
@@ -23,7 +23,7 @@ func (s *Session) searchHandler(msg []byte, patch *gabs.Container) {
 	s.TransactionChannel <- s.CurrentState
 }
 
-// SearchRequest Signature is the parameter for a search request
+// SearchRequestSignature is the parameter for a search request
 type SearchRequestSignature struct {
 	// pattern is the search query for the request
 	Pattern string
@@ -40,7 +40,8 @@ func (r *SearchRequestSignature) shortName() string {
 	return fmt.Sprintf("SEARCH#%s@%d", r.Pattern, r.Limit)
 }
 
-type searchStoredCache struct {
+// SearchStoredCache is the response for search request
+type SearchStoredCache struct {
 	Op    string `json:"op"`
 	Path  string `json:"path"`
 	Value struct {
@@ -79,7 +80,7 @@ type searchStoredCache struct {
 // search query, it does not utilize a cache (although it maintains one) so the
 // query made will be up to date with the servers. If the query is not loaded
 // within a certain time, ErrNotReceivedInTime is sent as an error
-func (s *Session) RequestSearch(spec SearchRequestSignature) (*searchStoredCache, error) {
+func (s *Session) RequestSearch(spec SearchRequestSignature) (*SearchStoredCache, error) {
 
 	uniqueID := fmt.Sprintf("%s-%d", spec.shortName(), s.SearchRequestVers[spec.shortName()])
 	spec.UniqueID = uniqueID
