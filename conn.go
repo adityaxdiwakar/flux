@@ -227,7 +227,6 @@ func (s *Session) listen() {
 		}
 
 		parsedJSON, err := gabs.ParseJSON(message)
-		fmt.Println(time.Now().UnixNano() / 1000000)
 		// TODO: handle this better rather than ignoring the message
 		if err != nil {
 			continue
