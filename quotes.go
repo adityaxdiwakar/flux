@@ -126,49 +126,51 @@ func (q *QuoteRequestSignature) shortName() string {
 // QuoteStoredCache is the response from a quote request
 type QuoteStoredCache struct {
 	Items []struct {
-		Symbol string `json:"symbol"`
-		Values struct {
-			ASK                        float64 `json:"ASK,omitempty"`
-			ASKEXCHANGE                string  `json:"ASK_EXCHANGE,omitempty"`
-			ASKSIZE                    int     `json:"ASK_SIZE,omitempty"`
-			BACKVOLATILITY             float64 `json:"BACK_VOLATILITY,omitempty"`
-			BETA                       float64 `json:"BETA,omitempty"`
-			BID                        float64 `json:"BID,omitempty"`
-			BIDEXCHANGE                string  `json:"BID_EXCHANGE,omitempty"`
-			BIDSIZE                    int     `json:"BID_SIZE,omitempty"`
-			BORROWSTATUS               string  `json:"BORROW_STATUS,omitempty"`
-			CLOSE                      float64 `json:"CLOSE,omitempty"`
-			DELTA                      float64 `json:"DELTA,omitempty"`
-			FRONTVOLATILITY            float64 `json:"FRONT_VOLATILITY,omitempty"`
-			GAMMA                      float64 `json:"GAMMA,omitempty"`
-			HIGH                       float64 `json:"HIGH,omitempty"`
-			HISTORICALVOLATILITY30DAYS float64 `json:"HISTORICAL_VOLATILITY_30_DAYS,omitempty"`
-			IMPLIEDVOLATILITY          float64 `json:"IMPLIED_VOLATILITY,omitempty"`
-			INITIALMARGIN              float64 `json:"INITIAL_MARGIN,omitempty"`
-			LAST                       float64 `json:"LAST,omitempty"`
-			LASTEXCHANGE               string  `json:"LAST_EXCHANGE,omitempty"`
-			LASTSIZE                   int     `json:"LAST_SIZE,omitempty"`
-			LOW                        float64 `json:"LOW,omitempty"`
-			MARK                       float64 `json:"MARK,omitempty"`
-			MARKETCAP                  int     `json:"MARKET_CAP,omitempty"`
-			MARKCHANGE                 float64 `json:"MARK_CHANGE,omitempty"`
-			MARKPERCENTCHANGE          float64 `json:"MARK_PERCENT_CHANGE,omitempty"`
-			NETCHANGE                  float64 `json:"NET_CHANGE,omitempty"`
-			NETCHANGEPERCENT           float64 `json:"NET_CHANGE_PERCENT,omitempty"`
-			OPEN                       float64 `json:"OPEN,omitempty"`
-			PERCENTILEIV               float64 `json:"PERCENTILE_IV,omitempty"`
-			RHO                        float64 `json:"RHO,omitempty"`
-			THETA                      float64 `json:"THETA,omitempty"`
-			VEGA                       float64 `json:"VEGA,omitempty"`
-			VOLATILITYDIFFERENCE       float64 `json:"VOLATILITY_DIFFERENCE,omitempty"`
-			VOLATILITYINDEX            float64 `json:"VOLATILITY_INDEX,omitempty"`
-			VOLUME                     int     `json:"VOLUME,omitempty"`
-			VWAP                       float64 `json:"VWAP,omitempty"`
-		} `json:"values"`
+		Symbol string      `json:"symbol"`
+		Values quoteValues `json:"values"`
 	} `json:"items"`
 	Service   string `json:"service"`
 	RequestID string `json:"requestId"`
 	Ver       int    `json:"ver"`
+}
+
+type quoteValues struct {
+	ASK                        float64 `json:"ASK,omitempty"`
+	ASKEXCHANGE                string  `json:"ASK_EXCHANGE,omitempty"`
+	ASKSIZE                    int     `json:"ASK_SIZE,omitempty"`
+	BACKVOLATILITY             float64 `json:"BACK_VOLATILITY,omitempty"`
+	BETA                       float64 `json:"BETA,omitempty"`
+	BID                        float64 `json:"BID,omitempty"`
+	BIDEXCHANGE                string  `json:"BID_EXCHANGE,omitempty"`
+	BIDSIZE                    int     `json:"BID_SIZE,omitempty"`
+	BORROWSTATUS               string  `json:"BORROW_STATUS,omitempty"`
+	CLOSE                      float64 `json:"CLOSE,omitempty"`
+	DELTA                      float64 `json:"DELTA,omitempty"`
+	FRONTVOLATILITY            float64 `json:"FRONT_VOLATILITY,omitempty"`
+	GAMMA                      float64 `json:"GAMMA,omitempty"`
+	HIGH                       float64 `json:"HIGH,omitempty"`
+	HISTORICALVOLATILITY30DAYS float64 `json:"HISTORICAL_VOLATILITY_30_DAYS,omitempty"`
+	IMPLIEDVOLATILITY          float64 `json:"IMPLIED_VOLATILITY,omitempty"`
+	INITIALMARGIN              float64 `json:"INITIAL_MARGIN,omitempty"`
+	LAST                       float64 `json:"LAST,omitempty"`
+	LASTEXCHANGE               string  `json:"LAST_EXCHANGE,omitempty"`
+	LASTSIZE                   int     `json:"LAST_SIZE,omitempty"`
+	LOW                        float64 `json:"LOW,omitempty"`
+	MARK                       float64 `json:"MARK,omitempty"`
+	MARKETCAP                  int     `json:"MARKET_CAP,omitempty"`
+	MARKCHANGE                 float64 `json:"MARK_CHANGE,omitempty"`
+	MARKPERCENTCHANGE          float64 `json:"MARK_PERCENT_CHANGE,omitempty"`
+	NETCHANGE                  float64 `json:"NET_CHANGE,omitempty"`
+	NETCHANGEPERCENT           float64 `json:"NET_CHANGE_PERCENT,omitempty"`
+	OPEN                       float64 `json:"OPEN,omitempty"`
+	PERCENTILEIV               float64 `json:"PERCENTILE_IV,omitempty"`
+	RHO                        float64 `json:"RHO,omitempty"`
+	THETA                      float64 `json:"THETA,omitempty"`
+	VEGA                       float64 `json:"VEGA,omitempty"`
+	VOLATILITYDIFFERENCE       float64 `json:"VOLATILITY_DIFFERENCE,omitempty"`
+	VOLATILITYINDEX            float64 `json:"VOLATILITY_INDEX,omitempty"`
+	VOLUME                     int     `json:"VOLUME,omitempty"`
+	VWAP                       float64 `json:"VWAP,omitempty"`
 }
 
 type newQuoteObject struct {
@@ -282,7 +284,14 @@ func (s *Session) RequestQuote(specs QuoteRequestSignature) (*QuoteStoredCache, 
 
 		case <-s.NotificationChannel:
 			if s.CurrentState.Quote.Ver == hash {
-				return &s.CurrentState.Quote, nil
+				cl := time.Now()
+				for {
+					if (s.CurrentState.Quote.Items[0].Values != quoteValues{}) {
+						return &s.CurrentState.Quote, nil
+					} else if time.Now().Sub(cl).Milliseconds() > 1000 {
+						return nil, ErrNotReceivedInTime
+					}
+				}
 			}
 		}
 	}
