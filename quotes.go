@@ -125,13 +125,16 @@ func (q *QuoteRequestSignature) shortName() string {
 
 // QuoteStoredCache is the response from a quote request
 type QuoteStoredCache struct {
-	Items []struct {
-		Symbol string      `json:"symbol"`
-		Values quoteValues `json:"values"`
-	} `json:"items"`
-	Service   string `json:"service"`
-	RequestID string `json:"requestId"`
-	Ver       int    `json:"ver"`
+	Items     []QuoteItem `json:"items"`
+	Service   string      `json:"service"`
+	RequestID string      `json:"requestId"`
+	Ver       int         `json:"ver"`
+}
+
+// QuoteItem is a single item in a QuoteResponse
+type QuoteItem struct {
+	Symbol string      `json:"symbol"`
+	Values quoteValues `json:"values"`
 }
 
 type quoteValues struct {
@@ -194,9 +197,12 @@ func (s *Session) quoteHandler(msg []byte, gab *gabs.Container) {
 	rVer, _ := strconv.Atoi(rVerStr)
 	rService = rService[1 : len(rService)-1]
 
+	newState := s.CurrentState
+
 	// get the patches
 	patches := gab.S("body", "patches").Children()
-	for _, patch := range patches {
+	fmt.Println(len(patches), patches)
+	for i, patch := range patches {
 
 		// fmt.Printf("%d - %s (%s)\n", rVer, patch.S("path").String(), patch.S("value").String())
 
@@ -208,34 +214,43 @@ func (s *Session) quoteHandler(msg []byte, gab *gabs.Container) {
 		}
 
 		path := patch.S("path").String()
+		if path == "\"\"" {
+			s.CurrentState.Quote = QuoteStoredCache{}
+		}
 		patch.Set(fmt.Sprintf("/quote%s", path[1:len(path)-1]), "path")
 
+		fmt.Println(i+1, patch)
 		bytesJSON, _ := patch.MarshalJSON()
 		patchStr := "[" + string(bytesJSON) + "]"
 		jspatch, err := jsonpatch.DecodePatch([]byte(patchStr))
 
 		if err != nil {
-			return
+			continue
 		}
 
-		byteState, _ := json.Marshal(s.CurrentState)
+		byteState, _ := json.Marshal(newState)
 
+		fmt.Println("before", string(byteState))
 		byteState, err = jspatch.Apply(byteState)
 		if err != nil {
-			return
+			fmt.Println(err)
+			continue
 		}
+		fmt.Println("after", string(byteState))
 
-		var newState storedCache
 		json.Unmarshal(byteState, &newState)
 		newState.Quote.RequestID = rID
 		newState.Quote.Service = rService
 		newState.Quote.Ver = int(rVer)
 
-		s.CurrentState = newState
-
-		s.NotificationChannel <- true
-		s.TransactionChannel <- newState
 	}
+
+	s.CurrentState = newState
+	fmt.Println("sending notification!")
+	sp, _ := json.MarshalIndent(s.CurrentState.Quote, "", "  ")
+	fmt.Println(string(sp))
+	s.NotificationChannel <- true
+	s.TransactionChannel <- newState
 }
 
 // RequestQuote returns the quote for the relevant spec with the fields requested
@@ -261,7 +276,7 @@ func (s *Session) RequestQuote(specs QuoteRequestSignature) (*QuoteStoredCache, 
 				},
 				Params: gatewayParams{
 					Account:     "COMBINED ACCOUNT",
-					Symbols:     []string{specs.Ticker},
+					Symbols:     strings.Split(specs.Ticker, ","),
 					RefreshRate: specs.RefreshRate,
 					QuoteFields: specs.Fields,
 				},
@@ -286,7 +301,7 @@ func (s *Session) RequestQuote(specs QuoteRequestSignature) (*QuoteStoredCache, 
 			if s.CurrentState.Quote.Ver == hash {
 				cl := time.Now()
 				for {
-					if (s.CurrentState.Quote.Items[0].Values != quoteValues{}) {
+					if (len(s.CurrentState.Quote.Items) != 0 && s.CurrentState.Quote.Items[0].Values != quoteValues{}) {
 						return &s.CurrentState.Quote, nil
 					} else if time.Now().Sub(cl).Milliseconds() > 1000 {
 						return nil, ErrNotReceivedInTime
