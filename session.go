@@ -28,6 +28,7 @@ type Session struct {
 	MutexLock                 bool
 	HandlerWorking            bool
 	DebugFlag                 bool
+	Established               bool
 }
 
 func (s *Session) specHash(str string) int {

@@ -32,6 +32,7 @@ func New(creds tda.Session, debug bool) (*Session, error) {
 	s.SearchRequestVers = make(map[string]int)
 	s.OptionSeriesRequestVers = make(map[string]int)
 	s.OptionChainGetRequestVers = make(map[string]int)
+	s.Established = false
 
 	return s, nil
 }
@@ -50,6 +51,7 @@ func (s *Session) Reset() error {
 	s.SearchRequestVers = make(map[string]int)
 	s.OptionSeriesRequestVers = make(map[string]int)
 	s.OptionChainGetRequestVers = make(map[string]int)
+	s.Established = false
 
 	return nil
 }
@@ -147,6 +149,7 @@ func (s *Session) Open() error {
 	go s.listen()
 	go s.reconnectHandler()
 
+	s.Established = true
 	return nil
 }
 
@@ -187,6 +190,7 @@ func (s *Session) reconnectHandler() {
 // Close sends a websocket.CloseMessage to the server and waits for closure
 func (s *Session) Close() error {
 	if s.wsConn != nil {
+		s.Established = false
 		s.wsConn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(1000, ""))
 
 		time.Sleep(time.Second)
