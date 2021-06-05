@@ -201,8 +201,7 @@ func (s *Session) quoteHandler(msg []byte, gab *gabs.Container) {
 
 	// get the patches
 	patches := gab.S("body", "patches").Children()
-	fmt.Println(len(patches), patches)
-	for i, patch := range patches {
+	for _, patch := range patches {
 
 		// fmt.Printf("%d - %s (%s)\n", rVer, patch.S("path").String(), patch.S("value").String())
 
@@ -219,7 +218,6 @@ func (s *Session) quoteHandler(msg []byte, gab *gabs.Container) {
 		}
 		patch.Set(fmt.Sprintf("/quote%s", path[1:len(path)-1]), "path")
 
-		fmt.Println(i+1, patch)
 		bytesJSON, _ := patch.MarshalJSON()
 		patchStr := "[" + string(bytesJSON) + "]"
 		jspatch, err := jsonpatch.DecodePatch([]byte(patchStr))
@@ -230,13 +228,10 @@ func (s *Session) quoteHandler(msg []byte, gab *gabs.Container) {
 
 		byteState, _ := json.Marshal(newState)
 
-		fmt.Println("before", string(byteState))
 		byteState, err = jspatch.Apply(byteState)
 		if err != nil {
-			fmt.Println(err)
 			continue
 		}
-		fmt.Println("after", string(byteState))
 
 		json.Unmarshal(byteState, &newState)
 		newState.Quote.RequestID = rID
@@ -246,9 +241,6 @@ func (s *Session) quoteHandler(msg []byte, gab *gabs.Container) {
 	}
 
 	s.CurrentState = newState
-	fmt.Println("sending notification!")
-	sp, _ := json.MarshalIndent(s.CurrentState.Quote, "", "  ")
-	fmt.Println(string(sp))
 	s.NotificationChannel <- true
 	s.TransactionChannel <- newState
 }
