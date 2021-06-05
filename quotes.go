@@ -267,7 +267,8 @@ func (s *Session) RequestQuote(specs QuoteRequestSignature) (*QuoteStoredCache, 
 					Ver:     hash,
 				},
 				Params: gatewayParams{
-					Account:     "COMBINED ACCOUNT",
+					Account: "COMBINED ACCOUNT",
+					// supports multi-quoting (see comments on #16)
 					Symbols:     strings.Split(specs.Ticker, ","),
 					RefreshRate: specs.RefreshRate,
 					QuoteFields: specs.Fields,
