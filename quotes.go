@@ -211,7 +211,7 @@ func (s *Session) quoteHandler(msg []byte, gab *gabs.Container) {
 
 		path := patch.S("path").String()
 		if path == "\"\"" {
-			s.CurrentState.Quote = QuoteStoredCache{}
+			newState.Quote = QuoteStoredCache{}
 		}
 		patch.Set(fmt.Sprintf("/quote%s", path[1:len(path)-1]), "path")
 
