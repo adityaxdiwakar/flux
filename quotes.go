@@ -205,9 +205,6 @@ func (s *Session) quoteHandler(msg []byte, gab *gabs.Container) {
 
 		// fmt.Printf("%d - %s (%s)\n", rVer, patch.S("path").String(), patch.S("value").String())
 
-		// TODO: implement actual error handling, currently using log.Fatal()
-		// which is bad
-
 		if patch.S("path").String() == "/error" {
 			continue
 		}
