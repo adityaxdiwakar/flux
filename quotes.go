@@ -291,10 +291,22 @@ func (s *Session) RequestQuote(specs QuoteRequestSignature) (*QuoteStoredCache, 
 			if s.CurrentState.Quote.Ver == hash {
 				cl := time.Now()
 				for {
-					if (len(s.CurrentState.Quote.Items) != 0 && s.CurrentState.Quote.Items[0].Values != quoteValues{}) {
-						return &s.CurrentState.Quote, nil
+					if len(s.CurrentState.Quote.Items) != 0 {
+						flag := false
+						for _, val := range s.CurrentState.Quote.Items {
+							if (val == QuoteItem{}) {
+								flag = true
+							}
+						}
+						if !flag {
+							time.Sleep(500 * time.Millisecond)
+							return &s.CurrentState.Quote, nil
+						}
 					} else if time.Now().Sub(cl).Milliseconds() > 1000 {
-						return nil, ErrNotReceivedInTime
+						if len(s.CurrentState.Quote.Items) == 0 {
+							return nil, ErrNotReceivedInTime
+						}
+						return &s.CurrentState.Quote, nil
 					}
 				}
 			}
