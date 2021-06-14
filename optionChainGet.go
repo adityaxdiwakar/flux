@@ -68,7 +68,7 @@ type optionChainGetWrapper struct {
 }
 
 // RequestOptionChainGet requests to get an option chain with the input being the OptionChainGetRequestSignature
-func (s *Session) RequestOptionChainGet(spec OptionChainGetRequestSignature) (*OptionChainGetStoredCache, error) {
+func (s *Session) RequestOptionChainGet(spec OptionChainGetRequestSignature) (*[]OptionChainSeries, error) {
 
 	uniqueID := fmt.Sprintf("%s-%d", spec.shortName(), s.OptionChainGetRequestVers[spec.shortName()])
 	spec.UniqueID = uniqueID
@@ -117,7 +117,7 @@ func (s *Session) RequestOptionChainGet(spec OptionChainGetRequestSignature) (*O
 	select {
 
 	case recvPayload := <-internalChannel:
-		return &recvPayload.OptionChainGet, nil
+		return &recvPayload.OptionChainGet.OptionSeries, nil
 
 	case <-ctx.Done():
 		return nil, ErrNotReceivedInTime
@@ -126,15 +126,18 @@ func (s *Session) RequestOptionChainGet(spec OptionChainGetRequestSignature) (*O
 }
 
 func (s *Session) optionChainGetHandler(msg []byte, patch *gabs.Container) {
-	patch = patch.S("payloadPatches", "0", "patches", "0")
+	patchBody := patch.S("body", "patches", "0")
+
+	rID := patch.Search("header", "id").String()
+	rID = rID[1 : len(rID)-1]
 
 	var state optionChainGetWrapper
-	err := json.Unmarshal(patch.Bytes(), &state)
+	err := json.Unmarshal(patchBody.Bytes(), &state)
 	if err != nil {
 		return
 	}
 
-	state.Path = "/optionChainGet"
+	state.Value.RequestID = rID
 	s.CurrentState.OptionChainGet = state.Value
 	s.TransactionChannel <- s.CurrentState
 }
