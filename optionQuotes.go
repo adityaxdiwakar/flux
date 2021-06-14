@@ -13,7 +13,7 @@ import (
 const (
 	// ProbabilityITM field
 	ProbabilityITM = QuoteField("PROBABILITY_ITM")
-	// OpenInt field
+	// OpenInterest field
 	OpenInterest = QuoteField("OPEN_INT")
 )
 
@@ -33,7 +33,7 @@ type OptionQuoteRequestSignature struct {
 	UniqueID string
 }
 
-// OptionChainGetFilter is the sub-parameter for filtering an option chain
+// OptionQuoteFielder is the sub-parameter for filtering an option quote
 type OptionQuoteFilter struct {
 	SeriesNames []string `json:"seriesNames"`
 	MaxStrike   float64  `json:"maxStrike"`
@@ -53,6 +53,7 @@ type OptionQuoteCache struct {
 	RequestVer int               `json:"requestVer"`
 }
 
+// OptionQuoteItem is a single option quote
 type OptionQuoteItem struct {
 	Symbol string `json:"symbol"`
 	Values struct {
