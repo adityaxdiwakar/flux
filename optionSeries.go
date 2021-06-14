@@ -22,7 +22,8 @@ func (o *OptionSeriesRequestSignature) shortName() string {
 	return fmt.Sprintf("OPTIONSERIES#%s", o.Ticker)
 }
 
-type optionSeries struct {
+// OptionSeries is an object containing the data for an option series
+type OptionSeries struct {
 	Underlying      string    `json:"underlying"`
 	Name            string    `json:"name"`
 	Spc             float64   `json:"spc"`
@@ -36,20 +37,20 @@ type optionSeries struct {
 
 // OptionSeriesCache is an object containing what is returned from an option series request
 type OptionSeriesCache struct {
-	Series     []optionSeries `json:"series"`
+	Series     []OptionSeries `json:"series"`
 	Service    string         `json:"service"`
 	RequestID  string         `json:"requestId"`
 	RequestVer int            `json:"requestVer"`
 }
 
-type optionSeriesStoredCache struct {
+type newOptionSeries struct {
 	Op    string            `json:"op"`
 	Path  string            `json:"path"`
 	Value OptionSeriesCache `json:"value"`
 }
 
 // RequestOptionSeries returns options series data for a specific series based on the spec provided
-func (s *Session) RequestOptionSeries(spec OptionSeriesRequestSignature) (*OptionSeriesCache, error) {
+func (s *Session) RequestOptionSeries(spec OptionSeriesRequestSignature) (*[]OptionSeries, error) {
 
 	uniqueID := fmt.Sprintf("%s-%d", spec.shortName(), s.OptionSeriesRequestVers[spec.shortName()])
 	spec.UniqueID = uniqueID
@@ -96,7 +97,10 @@ func (s *Session) RequestOptionSeries(spec OptionSeriesRequestSignature) (*Optio
 	select {
 
 	case recvPayload := <-internalChannel:
-		return &recvPayload.OptionSeries, nil
+		if len(recvPayload.OptionSeries.Series) == 0 {
+			return nil, ErrNotReceivedInTime
+		}
+		return &recvPayload.OptionSeries.Series, nil
 
 	case <-ctx.Done():
 		return nil, ErrNotReceivedInTime
@@ -104,15 +108,18 @@ func (s *Session) RequestOptionSeries(spec OptionSeriesRequestSignature) (*Optio
 }
 
 func (s *Session) optionSeriesHandler(msg []byte, patch *gabs.Container) {
-	patch = patch.S("payloadPatches", "0", "patches", "0")
+	patchBody := patch.S("body", "patches", "0")
 
-	var state optionSeriesStoredCache
-	err := json.Unmarshal(patch.Bytes(), &state)
+	rID := patch.Search("header", "id").String()
+	rID = rID[1 : len(rID)-1]
+
+	var state newOptionSeries
+	err := json.Unmarshal(patchBody.Bytes(), &state)
 	if err != nil {
 		return
 	}
 
-	state.Path = "/optionSeries"
+	state.Value.RequestID = rID
 	s.CurrentState.OptionSeries = state.Value
 	s.TransactionChannel <- s.CurrentState
 }
