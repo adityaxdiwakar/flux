@@ -33,7 +33,7 @@ type OptionQuoteRequestSignature struct {
 	UniqueID string
 }
 
-// OptionQuoteFielder is the sub-parameter for filtering an option quote
+// OptionQuoteFilter is the sub-parameter for filtering an option quote
 type OptionQuoteFilter struct {
 	SeriesNames []string `json:"seriesNames"`
 	MaxStrike   float64  `json:"maxStrike"`
