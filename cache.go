@@ -6,4 +6,5 @@ type storedCache struct {
 	Quote          QuoteStoredCache          `json:"quote"`
 	OptionSeries   OptionSeriesCache         `json:"optionSeries"`
 	OptionChainGet OptionChainGetStoredCache `json:"optionChainGet"`
+	OptionQuote    OptionQuoteCache          `json:"optionQuote"`
 }

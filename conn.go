@@ -29,6 +29,7 @@ func New(creds tda.Session, debug bool) (*Session, error) {
 	s.NotificationChannel = make(chan bool, 50)
 	s.ChartRequestVers = make(map[string]int)
 	s.QuoteRequestVers = make(map[string]int)
+	s.OptionQuoteRequestVers = make(map[string]int)
 	s.SearchRequestVers = make(map[string]int)
 	s.OptionSeriesRequestVers = make(map[string]int)
 	s.OptionChainGetRequestVers = make(map[string]int)
@@ -49,6 +50,7 @@ func (s *Session) Reset() error {
 	s.NotificationChannel = make(chan bool, 50)
 	s.ChartRequestVers = make(map[string]int)
 	s.QuoteRequestVers = make(map[string]int)
+	s.OptionQuoteRequestVers = make(map[string]int)
 	s.SearchRequestVers = make(map[string]int)
 	s.OptionSeriesRequestVers = make(map[string]int)
 	s.OptionChainGetRequestVers = make(map[string]int)
@@ -246,7 +248,7 @@ func (s *Session) listen() {
 			case `"login":`:
 				log.Println("Successfully logged in")
 
-			case `"chart"`:
+			case `"chart_v27"`:
 				// TODO: change this to chart_v27
 				s.chartHandler(message, child)
 
@@ -261,6 +263,9 @@ func (s *Session) listen() {
 
 			case `"quotes"`:
 				go s.quoteHandler(message, child)
+
+			case `"quotes/options"`:
+				s.optionQuoteHandler(message, child)
 
 			}
 

@@ -23,6 +23,7 @@ type Session struct {
 	SearchRequestVers         map[string]int
 	OptionSeriesRequestVers   map[string]int
 	OptionChainGetRequestVers map[string]int
+	OptionQuoteRequestVers    map[string]int
 	Mu                        sync.Mutex
 	QuoteMu                   sync.Mutex
 	MutexLock                 bool

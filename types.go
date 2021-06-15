@@ -41,24 +41,26 @@ type gatewayHeader struct {
 }
 
 type gatewayParams struct {
-	Limit             int                   `json:"limit,omitempty"`
-	Domain            string                `json:"domain,omitempty"`
-	Platform          string                `json:"platform,omitempty"`
-	Pattern           string                `json:"pattern,omitempty"`
-	Underlying        string                `json:"underlying,omitempty"`
-	UnderlyingSymbol  string                `json:"underlyingSymbol,omitempty"`
-	Token             string                `json:"token,omitempty"`
-	AccessToken       string                `json:"accessToken,omitempty"`
-	Tag               string                `json:"tag,omitempty"`
-	Symbol            string                `json:"symbol,omitempty"`
-	AggregationPeriod string                `json:"aggregationPeriod,omitempty"`
-	Range             string                `json:"range,omitempty"`
-	Studies           []string              `json:"studies,omitempty"`
-	Filter            *OptionChainGetFilter `json:"filter,omitempty"`
-	Account           string                `json:"account,omitempty"`
-	Symbols           []string              `json:"symbols,omitempty"`
-	QuoteFields       []QuoteField          `json:"fields,omitempty"`
-	RefreshRate       int                   `json:"refreshRate,omitempty"`
+	Limit             int          `json:"limit,omitempty"`
+	Domain            string       `json:"domain,omitempty"`
+	Platform          string       `json:"platform,omitempty"`
+	Pattern           string       `json:"pattern,omitempty"`
+	Underlying        string       `json:"underlying,omitempty"`
+	Exchange          string       `json:"exchange,omitempty"`
+	UnderlyingSymbol  string       `json:"underlyingSymbol,omitempty"`
+	Token             string       `json:"token,omitempty"`
+	AccessToken       string       `json:"accessToken,omitempty"`
+	Tag               string       `json:"tag,omitempty"`
+	Symbol            string       `json:"symbol,omitempty"`
+	AggregationPeriod string       `json:"timeAggregation,omitempty"`
+	Range             string       `json:"range,omitempty"`
+	Studies           []string     `json:"studies,omitempty"`
+	Filter            interface{}  `json:"filter,omitempty"`
+	Account           string       `json:"account,omitempty"`
+	Symbols           []string     `json:"symbols,omitempty"`
+	QuoteFields       []QuoteField `json:"fields,omitempty"`
+	RefreshRate       int          `json:"refreshRate,omitempty"`
+	ExtendedHours     bool         `json:"extendedHours,omitempty"`
 }
 
 type gatewayRequest struct {
