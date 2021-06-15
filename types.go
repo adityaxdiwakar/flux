@@ -52,7 +52,7 @@ type gatewayParams struct {
 	AccessToken       string       `json:"accessToken,omitempty"`
 	Tag               string       `json:"tag,omitempty"`
 	Symbol            string       `json:"symbol,omitempty"`
-	AggregationPeriod string       `json:"aggregationPeriod,omitempty"`
+	AggregationPeriod string       `json:"timeAggregation,omitempty"`
 	Range             string       `json:"range,omitempty"`
 	Studies           []string     `json:"studies,omitempty"`
 	Filter            interface{}  `json:"filter,omitempty"`
@@ -60,6 +60,7 @@ type gatewayParams struct {
 	Symbols           []string     `json:"symbols,omitempty"`
 	QuoteFields       []QuoteField `json:"fields,omitempty"`
 	RefreshRate       int          `json:"refreshRate,omitempty"`
+	ExtendedHours     bool         `json:"extendedHours,omitempty"`
 }
 
 type gatewayRequest struct {

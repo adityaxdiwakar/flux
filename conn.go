@@ -248,7 +248,7 @@ func (s *Session) listen() {
 			case `"login":`:
 				log.Println("Successfully logged in")
 
-			case `"chart"`:
+			case `"chart_v27"`:
 				// TODO: change this to chart_v27
 				s.chartHandler(message, child)
 

@@ -33,23 +33,15 @@ func (c *ChartRequestSignature) shortName() string {
 
 // ChartStoredCache is an object containing what is returned from a chart request
 type ChartStoredCache struct {
-	Symbol     string    `json:"symbol"`
-	Timestamps []int64   `json:"timestamps"`
-	Open       []float64 `json:"open"`
-	High       []float64 `json:"high"`
-	Low        []float64 `json:"low"`
-	Close      []float64 `json:"close"`
-	Volume     []int     `json:"volume"`
-	Events     []struct {
-		Symbol      string `json:"symbol"`
-		CompanyName string `json:"companyName"`
-		Website     string `json:"website"`
-		IsActual    bool   `json:"isActual"`
-		Time        int64  `json:"time"`
-	} `json:"events"`
-
-	// these can be ignored
-	Service    string `json:"service"`
+	Symbol  string `json:"symbol"`
+	Candles struct {
+		Timestamps []int64   `json:"timestamps"`
+		Opens      []float64 `json:"opens"`
+		Highs      []float64 `json:"highs"`
+		Lows       []float64 `json:"lows"`
+		Closes     []float64 `json:"closes"`
+		Volumes    []float64 `json:"volumes"`
+	} `json:"candles"`
 	RequestID  string `json:"requestId"`
 	RequestVer int    `json:"requestVer"`
 }
@@ -68,67 +60,51 @@ type updateChartObject struct {
 
 func (s *Session) chartHandler(msg []byte, gab *gabs.Container) {
 
-	// get the request id from the header
 	rID := gab.Search("header", "id").String()
 	rID = rID[1 : len(rID)-1]
-	rService := gab.Search("header", "service").String()
-	rService = rService[1 : len(rService)-1]
 
+	newState := s.CurrentState
 	// get the patches
 	patches := gab.S("body", "patches").Children()
 	for _, patch := range patches {
-		// TODO: implement actual error handling, currently using log.Fatal()
-		// which is bad
 		var err error
-		bytesJSON := patch.Bytes()
-
-		var modifiedChart []byte
 
 		if patch.S("path").String() == "/error" {
 			continue
 		}
 
-		if patch.S("path").String() == `""` {
-			newChart := newChartObject{}
-			json.Unmarshal(bytesJSON, &newChart)
-			newChart.Path = "/chart"
-			newChart.Value.RequestID = rID
-			newChart.Value.Service = rService
-			modifiedChart, err = json.Marshal([]newChartObject{newChart})
-		} else {
-			if rID != fmt.Sprintf("\"%s\"", s.CurrentState.Chart.RequestID) {
-				continue
-			}
-			updatedChart := updateChartObject{}
-			json.Unmarshal(bytesJSON, &updatedChart)
-			updatedChart.Path = "/chart" + updatedChart.Path
-			modifiedChart, err = json.Marshal([]updateChartObject{updatedChart})
+		path := patch.S("path").String()
+		if path == "\"\"" {
+			newState.Chart = ChartStoredCache{}
 		}
+		patch.Set(fmt.Sprintf("/chart%s", path[1:len(path)-1]), "path")
+
+		bytesJSON, _ := patch.MarshalJSON()
+		patchStr := "[" + string(bytesJSON) + "]"
+		jspatch, err := jsonpatch.DecodePatch([]byte(patchStr))
 
 		if err != nil {
-			return
-		}
-		jspatch, err := jsonpatch.DecodePatch(modifiedChart)
-		if err != nil {
-			return
+			continue
 		}
 
-		byteState, _ := json.Marshal(s.CurrentState)
+		byteState, _ := json.Marshal(newState)
 
 		byteState, err = jspatch.Apply(byteState)
 		if err != nil {
-			return
+			continue
 		}
+
+		json.Unmarshal(byteState, &newState)
+		newState.Chart.RequestID = rID
 
 		var newState storedCache
 		json.Unmarshal(byteState, &newState)
 
 		s.CurrentState = newState
 
-		if patch.S("path").String() == `""` {
-			s.TransactionChannel <- newState
-		}
 	}
+
+	s.TransactionChannel <- newState
 }
 
 // RequestChart takes a ChartRequestSignature as an input and responds with a
@@ -150,15 +126,16 @@ func (s *Session) RequestChart(specs ChartRequestSignature) (*ChartStoredCache, 
 		Payload: []gatewayRequest{
 			{
 				Header: gatewayHeader{
-					Service: "chart",
+					Service: "chart_v27",
 					ID:      uniqueID,
 					Ver:     int(s.ChartRequestVers[specs.shortName()]),
 				},
 				Params: gatewayParams{
 					Symbol:            specs.Ticker,
 					AggregationPeriod: specs.Width,
-					Studies:           []string{},
 					Range:             specs.Range,
+					Studies:           []string{},
+					ExtendedHours:     true,
 				},
 			},
 		},
