@@ -95,7 +95,7 @@ func (s *Session) Open() error {
 
 	// initial message to be sent to receive a protocol message from the server
 	establishProtocolPacket := protocolPacketData{
-		Ver:       "26.*.*",
+		Ver:       "27.*.*",
 		Fmt:       "json-patches-structured",
 		Heartbeat: "5s",
 	}
@@ -248,8 +248,13 @@ func (s *Session) listen() {
 			case `"login":`:
 				log.Println("Successfully logged in")
 
-			case `"chart_v27"`:
-				// TODO: change this to chart_v27
+			/*
+				case `"chart_v27"`:
+					// TODO: change this to chart_v27
+					s.oldChartHandler(message, child)
+			*/
+
+			case `"chart"`:
 				s.chartHandler(message, child)
 
 			case `"instrument_search"`:
@@ -266,9 +271,7 @@ func (s *Session) listen() {
 
 			case `"quotes/options"`:
 				s.optionQuoteHandler(message, child)
-
 			}
-
 		}
 	}
 }
