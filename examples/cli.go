@@ -17,7 +17,7 @@ func main() {
 		RootUrl:     "https://api.tdameritrade.com/v1",
 	}
 
-	s, err := flux.New(tdaSession, true)
+	s, err := flux.New(tdaSession, false)
 	if err != nil {
 		log.Fatal(err)
 	}

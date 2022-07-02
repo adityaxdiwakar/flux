@@ -1,7 +1,7 @@
 package flux
 
 type storedCache struct {
-	Chart          ChartStoredCache          `json:"chart"`
+	Chart          ChartData                 `json:"chart"`
 	Search         SearchStoredCache         `json:"search"`
 	Quote          QuoteStoredCache          `json:"quote"`
 	OptionSeries   OptionSeriesCache         `json:"optionSeries"`

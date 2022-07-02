@@ -1,13 +1,13 @@
 package flux
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/Jeffail/gabs/v2"
 	"github.com/adityaxdiwakar/tda-go"
 	"github.com/gorilla/websocket"
 )
@@ -33,6 +33,7 @@ func New(creds tda.Session, debug bool) (*Session, error) {
 	s.SearchRequestVers = make(map[string]int)
 	s.OptionSeriesRequestVers = make(map[string]int)
 	s.OptionChainGetRequestVers = make(map[string]int)
+	s.ChartRouteTable = make(ChartRouteTableT)
 	s.Established = false
 
 	return s, nil
@@ -209,11 +210,37 @@ func (s *Session) Close() error {
 	return nil
 }
 
+type SocketMsg struct {
+	Payload []Payload `json:"payload"`
+}
+
+type Header struct {
+	Service string `json:"service"`
+	ID      string `json:"id"`
+	Ver     int    `json:"ver"`
+	Type    string `json:"type"`
+}
+
+type Payload struct {
+	Header Header `json:"header"`
+	Body   json.RawMessage
+}
+
+const (
+	LoginService            string = "login"
+	ChartService            string = "chart"
+	InstrumentSearchService string = "instrument_search"
+	OptionSeriesService     string = "option_series"
+	OptionChainGetService   string = "option_chain/get"
+	QuotesService           string = "quotes"
+	QuoteOptionsService     string = "quotes/options"
+)
+
 func (s *Session) listen() {
 	for {
-
-		_, message, err := s.wsConn.ReadMessage()
+		_, socketBytes, err := s.wsConn.ReadMessage()
 		if err != nil {
+			// TODO: this is not how a mutex works
 			if s.MutexLock == true {
 				log.Printf("[FLUX] Disconnected with routine restart imminent...")
 			} else {
@@ -225,52 +252,31 @@ func (s *Session) listen() {
 			break
 		}
 
+		socketStringMsg := string(socketBytes)
 		if s.DebugFlag {
-			fmt.Println(string(message))
+			fmt.Println(socketStringMsg)
 		}
 
-		if strings.Contains(string(message), "heartbeat") {
+		// ignore heartbeats
+		if strings.Contains(socketStringMsg, "heartbeat") {
 			continue
 		}
 
-		parsedJSON, err := gabs.ParseJSON(message)
-		// TODO: handle this better rather than ignoring the message
-		if err != nil {
+		var socketData SocketMsg
+		if err := json.Unmarshal(socketBytes, &socketData); err != nil {
+			// TODO: handle this better rather than ignoring the message
 			continue
 		}
 
-		for _, child := range parsedJSON.S("payload").Children() {
+		for _, payload := range socketData.Payload {
+			switch payload.Header.Service {
 
-			serviceType := child.Search("header", "service")
-
-			switch serviceType.String() {
-
-			case `"login":`:
+			case LoginService:
 				log.Println("Successfully logged in")
 
-			/*
-				case `"chart_v27"`:
-					// TODO: change this to chart_v27
-					s.oldChartHandler(message, child)
-			*/
+			case ChartService:
+				s.chartHandler(payload)
 
-			case `"chart"`:
-				s.chartHandler(message, child)
-
-			case `"instrument_search"`:
-				s.searchHandler(message, child)
-
-			case `"optionSeries"`:
-				s.optionSeriesHandler(message, child)
-
-			case `"option_chain/get"`:
-				s.optionChainGetHandler(message, child)
-
-			case `"quotes"`:
-				go s.quoteHandler(message, child)
-
-			case `"quotes/options"`:
-				s.optionQuoteHandler(message, child)
 			}
 		}
 	}

@@ -24,6 +24,7 @@ type Session struct {
 	OptionSeriesRequestVers   map[string]int
 	OptionChainGetRequestVers map[string]int
 	OptionQuoteRequestVers    map[string]int
+	ChartRouteTable           ChartRouteTableT
 	Mu                        sync.Mutex
 	QuoteMu                   sync.Mutex
 	MutexLock                 bool

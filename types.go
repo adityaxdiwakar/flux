@@ -24,6 +24,8 @@ func (p *protocolResponse) IsEmpty() bool {
 	}
 }
 
+type ChartRouteTableT map[string](chan RespTuple[ChartData])
+
 type gatewayConfigResponse struct {
 	APIURL           string `json:"apiUrl"`
 	APIKey           string `json:"apiKey"`
@@ -38,6 +40,25 @@ type gatewayHeader struct {
 	Service string `json:"service,omitempty"`
 	ID      string `json:"id,omitempty"`
 	Ver     int    `json:"ver"`
+}
+
+type RespTuple[T any] struct {
+	Body T
+	Err  error
+}
+
+type ErroredBody struct {
+	Message string `json:"message"`
+}
+
+type Body[T any] struct {
+	Patches []PatchesBody[T] `json:"patches"`
+}
+
+type PatchesBody[T any] struct {
+	Op    string `json:"op"`
+	Path  string `json:"path"`
+	Value T      `json:"value"`
 }
 
 type gatewayParams struct {
