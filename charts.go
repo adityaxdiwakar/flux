@@ -68,7 +68,6 @@ func (s *Session) chartHandler(data Payload) {
 	}
 
 	if data.Header.Type == "snapshot" {
-		// if the data is a snapshot, we can just read the data
 		body := ChartData{}
 		if err := json.Unmarshal(data.Body, &body); err != nil {
 			resp.Err = errors.New("Received a snapshot response that could not be parsed")
@@ -77,9 +76,9 @@ func (s *Session) chartHandler(data Payload) {
 		}
 		body.RequestID = data.Header.ID
 		body.RequestVer = data.Header.Ver
-		s.CurrentState.Chart = body
+		s.Cache.Chart = body
 
-		resp.Body = s.CurrentState.Chart
+		resp.Body = s.Cache.Chart
 		resp.Err = nil
 		route <- resp
 
@@ -92,7 +91,6 @@ func (s *Session) chartHandler(data Payload) {
 		return
 	}
 
-	// since this is a patch, we can assert this as type Body[ChartData]
 	body := Body[ChartData]{}
 	if err := json.Unmarshal(data.Body, &body); err != nil {
 		resp.Err = errors.New("Response body could not be interpreted as type Body")
@@ -100,53 +98,50 @@ func (s *Session) chartHandler(data Payload) {
 		return
 	}
 
-	newState := s.CurrentState
+	newState := s.Cache
 	for idx := 0; idx < len(body.Patches); idx++ {
 		// TODO: handle the "error" path case (might be deprecated)
 
-		if body.Patches[idx].Path == `""` {
+		if body.Patches[idx].Path == "" {
 			newState.Chart = ChartData{}
 		}
 		body.Patches[idx].Path = "/chart" + body.Patches[idx].Path
-
 	}
 
+	applyPatch(body, &newState)
+
+	s.Cache = newState
+	s.Cache.Chart.RequestID = data.Header.ID
+	s.Cache.Chart.RequestVer = data.Header.Ver
+
+	resp.Body = s.Cache.Chart
+	resp.Err = nil
+	route <- resp
+}
+
+func applyPatch[T any](body Body[T], state *cache) error {
 	paylodBytes, err := json.Marshal(body.Patches)
 	if err != nil {
-		resp.Err = errors.New("Response body cannot be marshalled")
-		route <- resp
-		return
+		return err
 	}
 
 	jspatch, err := jsonpatch.DecodePatch(paylodBytes)
 	if err != nil {
-		resp.Err = errors.New("Error occured while decoding patches")
-		route <- resp
-		return
+		return err
 	}
 
-	byteState, err := json.Marshal(newState)
+	byteState, err := json.Marshal(*state)
 	if err != nil {
-		resp.Err = errors.New("Error occured while marshalling current state")
-		route <- resp
-		return
+		return err
 	}
 
 	byteState, err = jspatch.Apply(byteState)
 	if err != nil {
-		resp.Err = errors.New("Error occured while applying JSON Patch")
-		route <- resp
-		return
+		return err
 	}
 
-	json.Unmarshal(byteState, &newState)
-	s.CurrentState = newState
-	s.CurrentState.Chart.RequestID = data.Header.ID
-	s.CurrentState.Chart.RequestVer = data.Header.Ver
-
-	resp.Body = s.CurrentState.Chart
-	resp.Err = nil
-	route <- resp
+	json.Unmarshal(byteState, state)
+	return nil
 }
 
 // RequestChart takes a ChartRequestSignature as an input and responds with a
@@ -158,8 +153,8 @@ func (s *Session) RequestChart(specs ChartRequestSignature) (*ChartData, error) 
 	// force capitalization of tickers, since the socket is case sensitive
 	specs.Ticker = strings.ToUpper(specs.Ticker)
 
-	if s.CurrentState.Chart.RequestID == specs.shortName() {
-		return &s.CurrentState.Chart, nil
+	if s.Cache.Chart.RequestID == specs.shortName() {
+		return &s.Cache.Chart, nil
 	}
 
 	uniqueID := fmt.Sprintf("%s-%d", specs.shortName(),
