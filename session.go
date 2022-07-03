@@ -6,30 +6,32 @@ import (
 	"sync"
 
 	"github.com/adityaxdiwakar/tda-go"
+	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/gorilla/websocket"
 )
 
 // Session is the session object for the flux driver and can be created and
 // returned using flux.New()
 type Session struct {
-	TdaSession                tda.Session
-	wsConn                    *websocket.Conn
-	ConfigURL                 string
-	Cache                     cache
-	NotificationChannel       chan bool
-	ChartRequestVers          map[string]int
-	QuoteRequestVers          map[string]int
-	SearchRequestVers         map[string]int
-	OptionSeriesRequestVers   map[string]int
-	OptionChainGetRequestVers map[string]int
-	OptionQuoteRequestVers    map[string]int
-	ChartRouteTable           ChartRouteTableT
-	Mu                        sync.Mutex
-	QuoteMu                   sync.Mutex
-	MutexLock                 bool
-	HandlerWorking            bool
-	DebugFlag                 bool
-	Established               bool
+	wsConn     *websocket.Conn
+	TdaSession tda.Session
+	Lock       sync.Mutex
+	ConfigURL  string
+	Cache      cache
+
+	// Session flags
+	Restarting  bool
+	Reconnecter bool
+	DebugFlag   bool
+	Established bool
+
+	// Route tables
+	ChartRouteTable  RouteTable[ChartData]
+	SearchRouteTable RouteTable[SearchData]
+
+	// Request version numbers
+	ChartRequestVers  map[string]int
+	SearchRequestVers map[string]int
 }
 
 func (s *Session) specHash(str string) int {
@@ -56,4 +58,29 @@ func (s *Session) Gateway() (string, error) {
 
 	json.NewDecoder(res.Body).Decode(&gatewayResponse)
 	return gatewayResponse.MobileGatewayURL.Livetrading, nil
+}
+
+func applyPatch[T any](body Body[T], state *cache) error {
+	paylodBytes, err := json.Marshal(body.Patches)
+	if err != nil {
+		return err
+	}
+
+	jspatch, err := jsonpatch.DecodePatch(paylodBytes)
+	if err != nil {
+		return err
+	}
+
+	byteState, err := json.Marshal(*state)
+	if err != nil {
+		return err
+	}
+
+	byteState, err = jspatch.Apply(byteState)
+	if err != nil {
+		return err
+	}
+
+	json.Unmarshal(byteState, state)
+	return nil
 }

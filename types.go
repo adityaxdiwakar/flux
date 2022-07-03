@@ -24,7 +24,7 @@ func (p *protocolResponse) IsEmpty() bool {
 	}
 }
 
-type ChartRouteTableT map[string](chan RespTuple[ChartData])
+type RouteTable[T any] map[string](chan RespTuple[T])
 
 type gatewayConfigResponse struct {
 	APIURL           string `json:"apiUrl"`

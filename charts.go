@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"strings"
 	"time"
-
-	jsonpatch "github.com/evanphx/json-patch"
 )
 
 // ChartRequestSignature is the parameter for a chart request
@@ -108,7 +106,12 @@ func (s *Session) chartHandler(data Payload) {
 		body.Patches[idx].Path = "/chart" + body.Patches[idx].Path
 	}
 
-	applyPatch(body, &newState)
+	err := applyPatch(body, &newState)
+	if err != nil {
+		resp.Err = err
+		route <- resp
+		return
+	}
 
 	s.Cache = newState
 	s.Cache.Chart.RequestID = data.Header.ID
@@ -117,31 +120,6 @@ func (s *Session) chartHandler(data Payload) {
 	resp.Body = s.Cache.Chart
 	resp.Err = nil
 	route <- resp
-}
-
-func applyPatch[T any](body Body[T], state *cache) error {
-	paylodBytes, err := json.Marshal(body.Patches)
-	if err != nil {
-		return err
-	}
-
-	jspatch, err := jsonpatch.DecodePatch(paylodBytes)
-	if err != nil {
-		return err
-	}
-
-	byteState, err := json.Marshal(*state)
-	if err != nil {
-		return err
-	}
-
-	byteState, err = jspatch.Apply(byteState)
-	if err != nil {
-		return err
-	}
-
-	json.Unmarshal(byteState, state)
-	return nil
 }
 
 // RequestChart takes a ChartRequestSignature as an input and responds with a

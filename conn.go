@@ -22,17 +22,16 @@ func New(creds tda.Session, debug bool) (*Session, error) {
 		return nil, err
 	}
 
-	s.DebugFlag = debug
 	s.ConfigURL = "https://trade.thinkorswim.com/v1/api/config"
+	s.DebugFlag = debug
 	s.Cache = cache{}
-	s.NotificationChannel = make(chan bool, 50)
+
 	s.ChartRequestVers = make(map[string]int)
-	s.QuoteRequestVers = make(map[string]int)
-	s.OptionQuoteRequestVers = make(map[string]int)
 	s.SearchRequestVers = make(map[string]int)
-	s.OptionSeriesRequestVers = make(map[string]int)
-	s.OptionChainGetRequestVers = make(map[string]int)
-	s.ChartRouteTable = make(ChartRouteTableT)
+
+	s.ChartRouteTable = make(RouteTable[ChartData])
+	s.SearchRouteTable = make(RouteTable[SearchData])
+
 	s.Established = false
 
 	return s, nil
@@ -46,13 +45,12 @@ func (s *Session) Reset() error {
 
 	s.ConfigURL = "https://trade.thinkorswim.com/v1/api/config"
 	s.Cache = cache{}
-	s.NotificationChannel = make(chan bool, 50)
 	s.ChartRequestVers = make(map[string]int)
-	s.QuoteRequestVers = make(map[string]int)
-	s.OptionQuoteRequestVers = make(map[string]int)
 	s.SearchRequestVers = make(map[string]int)
-	s.OptionSeriesRequestVers = make(map[string]int)
-	s.OptionChainGetRequestVers = make(map[string]int)
+
+	s.ChartRouteTable = make(RouteTable[ChartData])
+	s.SearchRouteTable = make(RouteTable[SearchData])
+
 	s.Established = false
 
 	return nil
@@ -156,36 +154,35 @@ func (s *Session) Open() error {
 }
 
 func (s *Session) sendJSON(v interface{}) error {
-	s.Mu.Lock()
-	defer s.Mu.Unlock()
+	s.Lock.Lock()
+	defer s.Lock.Unlock()
 	return s.wsConn.WriteJSON(v)
 }
 
 func (s *Session) reconnectHandler() {
 	// latch to only establish a single handler (singleton)
-	if s.HandlerWorking == true {
+	if s.Reconnecter == true {
 		return
 	}
-	s.HandlerWorking = true
+	s.Reconnecter = true
 
 	// at the end of this function, delete this handler
 	defer func() {
-		s.HandlerWorking = false
+		s.Reconnecter = false
 	}()
 
 	// reconnect every 20 minutes
 	for range time.Tick(20 * time.Minute) {
-		s.MutexLock = true
-		s.Mu.Lock()
-		fmt.Printf("\n")
-		log.Println("[FLUX] Restarting connection, attempting disconnect...")
+		s.Lock.Lock()
+		s.Restarting = true
+		log.Println("\n[FLUX] Restarting connection, attempting disconnect...")
 		s.Close()
 		log.Println("[FLUX] Attempting reconnect...")
 		s.Open()
 		log.Println("[FLUX] Connected")
 		time.Sleep(250 * time.Millisecond)
-		s.Mu.Unlock()
-		s.MutexLock = false
+		s.Restarting = false
+		s.Lock.Unlock()
 	}
 }
 
@@ -193,7 +190,8 @@ func (s *Session) reconnectHandler() {
 func (s *Session) Close() error {
 	if s.wsConn != nil {
 		s.Established = false
-		s.wsConn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(1000, ""))
+		s.wsConn.WriteMessage(websocket.CloseMessage,
+			websocket.FormatCloseMessage(1000, ""))
 
 		time.Sleep(time.Second)
 
@@ -201,7 +199,6 @@ func (s *Session) Close() error {
 		if err != nil {
 			return err
 		}
-
 		s.wsConn = nil
 	}
 
@@ -239,7 +236,7 @@ func (s *Session) listen() {
 		_, socketBytes, err := s.wsConn.ReadMessage()
 		if err != nil {
 			// TODO: this is not how a mutex works
-			if s.MutexLock == true {
+			if s.Restarting {
 				log.Printf("[FLUX] Disconnected with routine restart imminent...")
 			} else {
 				log.Printf("error: closing websocket listen due to %v", err)
@@ -275,6 +272,8 @@ func (s *Session) listen() {
 			case ChartService:
 				s.chartHandler(payload)
 
+			case InstrumentSearchService:
+				s.searchHandler(payload)
 			}
 		}
 	}

@@ -17,7 +17,7 @@ func main() {
 		RootUrl:     "https://api.tdameritrade.com/v1",
 	}
 
-	s, err := flux.New(tdaSession, false)
+	s, err := flux.New(tdaSession, true)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -32,7 +32,7 @@ func main() {
 			s.Close()
 			os.Exit(1)
 		} else {
-			payload, err := s.RequestChart(flux.ChartRequestSignature{Ticker: input, Width: "HOUR1", Range: "DAY1"})
+			payload, err := s.RequestSearch(flux.SearchRequestSignature{Pattern: input})
 			if err != nil {
 				fmt.Printf("could not load ticker: %v\n", err)
 			} else {
